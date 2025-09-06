@@ -1,13 +1,163 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Page</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ข้อมูลโภชนาการ</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --accent:#0b74de;
+      --danger:#d9534f;
+      font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    body{
+      margin:0;
+      background:var(--bg);
+      color:#111827;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:32px;
+    }
+    .container{
+      width:100%;
+      max-width:760px;
+    }
+    .card{
+      background:var(--card);
+      border-radius:10px;
+      box-shadow:0 6px 18px rgba(12,15,20,0.08);
+      padding:22px;
+      margin-bottom:16px;
+    }
+    h1{
+      margin:0 0 6px 0;
+      font-size:20px;
+    }
+    p.lead{ margin:0; color:var(--muted); font-size:14px; }
+    .row{
+      display:flex;
+      gap:16px;
+      margin-top:14px;
+      flex-wrap:wrap;
+    }
+    .col{
+      flex:1 1 240px;
+      min-width:220px;
+    }
+    .label{ font-size:13px; color:var(--muted); margin-bottom:6px; display:block; }
+    .value{
+      background:#f3f6fb;
+      border-radius:8px;
+      padding:10px 12px;
+      font-weight:600;
+      font-size:15px;
+    }
+
+    /* Nutrition table */
+    .nutri-table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:18px;
+      font-size:15px;
+    }
+    .nutri-table th{
+      text-align:left;
+      padding:10px 8px;
+      border-bottom:1px solid #e6e9ef;
+      color:var(--muted);
+      font-weight:600;
+    }
+    .nutri-table td{
+      padding:12px 8px;
+      border-bottom:1px dashed #eef2f7;
+      vertical-align:middle;
+    }
+    .right{ text-align:right; }
+    .percent{
+      font-weight:700;
+      color:var(--accent);
+      font-size:14px;
+    }
+    .note{
+      margin-top:12px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    /* small responsive tweaks */
+    @media (max-width:520px){
+      .row{ gap:10px; }
+      .value{ font-size:14px; padding:8px 10px; }
+    }
+  </style>
 </head>
 <body>
-    <h1>Hello World!</h1>
-    <p>นี่คือหน้าเว็บของคุณ</p>
+  <main class="container" role="main">
+    <section class="card" aria-labelledby="title">
+      <header>
+        <h1 id="title">ป้ายข้อมูลโภชนาการ</h1>
+        <p class="lead">ข้อมูลตัวอย่าง — แก้ข้อความหรือตัวเลขตามจริงก่อนใช้งาน</p>
+      </header>
+
+      <!-- Basic info -->
+      <div class="row" role="list">
+        <div class="col" role="listitem">
+          <label class="label">ปริมาณหนึ่งหน่วยบริโภค:</label>
+          <div class="value">1 ขวด (250 มล.)</div>
+        </div>
+
+        <div class="col" role="listitem">
+          <label class="label">จำนวนหน่วยบริโภคต่อภาชนะบรรจุ:</label>
+          <div class="value">1 หน่วย</div>
+        </div>
+      </div>
+
+      <!-- Nutrition per serving -->
+      <table class="nutri-table" aria-describedby="nutri-desc">
+        <thead>
+          <tr>
+            <th colspan="2">คุณค่าทางโภชนาการต่อหนึ่งหน่วยบริโภค</th>
+            <th class="right">ต่อหน่วย</th>
+            <th class="right">ร้อยละ Thai RDI</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="width:56%"><strong>พลังงาน (กิโลแคลอรี)</strong></td>
+            <td>—</td>
+            <td class="right">120 kcal</td>
+            <td class="right"><span class="percent">6%</span></td>
+          </tr>
+
+          <tr>
+            <td><strong>น้ำตาล (กรัม)</strong></td>
+            <td>—</td>
+            <td class="right">18 g</td>
+            <td class="right"><span class="percent">20%</span></td>
+          </tr>
+
+          <tr>
+            <td><strong>ไขมัน (กรัม)</strong></td>
+            <td>—</td>
+            <td class="right">3 g</td>
+            <td class="right"><span class="percent">4%</span></td>
+          </tr>
+
+          <tr>
+            <td><strong>โซเดียม (มิลลิกรัม)</strong></td>
+            <td>—</td>
+            <td class="right">150 mg</td>
+            <td class="right"><span class="percent">8%</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p id="nutri-desc" class="note"><strong>ข้อมูลสารอาหารที่ควรสังเกต:</strong> ปริมาณที่แสดงเป็นค่าต่อหนึ่งหน่วยบริโภค และร้อยละ Thai RDI อาจแตกต่างตามเกณฑ์อ้างอิง กรุณาตรวจสอบแหล่งอ้างอิงก่อนใช้งานเชิงพาณิชย์</p>
+    </section>
+  </main>
 </body>
 </html>
-
