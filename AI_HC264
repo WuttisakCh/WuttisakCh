@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMM Inspection & Adjustment Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap');
+        body { font-family: 'Prompt', sans-serif; background-color: #f0f2f5; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .upload-area { border: 2px dashed #cbd5e1; transition: all 0.3s ease; }
+        .upload-area:hover, .upload-area.dragover { border-color: #3b82f6; background-color: #eff6ff; }
+        .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* บังคับสี SVG ป้องกันปัญหารูปดำ */
+        .drawing-svg rect { fill: #f8fafc !important; stroke: #94a3b8 !important; }
+        .drawing-svg circle.hole { fill: #ffffff !important; stroke: #64748b !important; }
+        .drawing-svg circle.ref-point { fill: #ef4444 !important; stroke: #ffffff !important; }
+        .drawing-svg line { stroke-dasharray: 3,2; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-[1600px] mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">เครื่องมือตรวจสอบคุณภาพชิ้นงาน (CMM Tool)</h1>
+                <p class="text-gray-500 text-sm">จุดอ้างอิง (0,0) อยู่ที่กึ่งกลางรูขวา | ระบบตรวจสอบอัตโนมัติ</p>
+            </div>
+            <div class="p-3 bg-blue-50 rounded-lg border border-blue-100 min-w-[300px]">
+                <label class="block text-xs font-bold text-blue-800 uppercase mb-2">
+                    <i class="fas fa-key mr-1"></i> Gemini API Key
+                </label>
+                <input type="password" id="apiKeyInput" 
+                    class="w-full px-3 py-2 text-sm border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="Paste your key here...">
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 bg-blue-100 px-4 py-2 rounded-full text-blue-700 font-medium border border-blue-200 shadow-sm">
+                    <i class="fas fa-bullseye"></i>
+                    <span>Ref: Center Right Hole (0,0)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
+            <!-- Sidebar: Upload Control -->
+            <div class="md:col-span-4 lg:col-span-3">
+                <div class="card p-6 h-full flex flex-col justify-between border border-gray-100">
+                    <div>
+                        <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-700">
+                            <i class="fas fa-file-upload text-blue-500"></i> อัปโหลดรายงาน
+                        </h2>
+                        
+                        <!-- ช่องอัปโหลด -->
+                        <div id="dropZone" class="upload-area rounded-xl p-8 text-center cursor-pointer mb-4 flex flex-col items-center justify-center min-h-[180px]">
+                            <input type="file" id="fileInput" class="hidden" accept="image/*">
+                            <i class="fas fa-image text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-sm text-gray-500 font-medium">คลิกหรือลากรูปรายงาน CMM</p>
+                        </div>
+
+                        <!-- ส่วนแสดงรูปพรีวิว -->
+                        <div id="previewContainer" class="hidden relative group mb-4">
+                            <img id="imagePreview" src="" class="w-full h-auto max-h-64 object-contain rounded-lg border border-blue-100 bg-gray-50 shadow-inner">
+                            <button onclick="removeImage()" class="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <button id="analyzeBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            ประมวลผลด้วย AI
+                        </button>
+                        <button id="newJobBtn" class="hidden w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>ตรวจสอบงานถัดไป</span>
+                        </button>
+                        <div id="loader" class="hidden flex items-center justify-center mt-4 gap-3 text-blue-600">
+                            <div class="loading-spinner"></div>
+                            <span class="text-xs font-medium italic">AI กำลังวิเคราะห์ข้อมูล...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drawing Area -->
+            <div class="md:col-span-8 lg:col-span-9">
+                <div class="card p-4 flex flex-col items-center bg-white border-b-4 border-blue-500 h-full relative">
+                    <h3 class="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest italic">Reference Drawing Diagram</h3>
+                    <div class="flex-grow flex items-center justify-center w-full bg-slate-50 rounded-xl overflow-hidden border border-gray-100">
+                        <svg width="450" height="220" viewBox="0 0 200 120" class="max-w-full drawing-svg">
+                            <rect x="30" y="20" width="140" height="80" rx="40" stroke-width="2" />
+                            <circle cx="130" cy="60" r="18" class="hole" stroke-width="1.5" /> 
+                            <circle cx="130" cy="60" r="4" class="ref-point" stroke-width="1.5" /> 
+                            <circle cx="70" cy="60" r="15" class="hole" stroke-width="1.5" /> 
+                            <circle cx="100" cy="35" r="8" class="hole" stroke-width="1.5" /> 
+                            <circle cx="100" cy="85" r="8" class="hole" stroke-width="1.5" /> 
+                            <line x1="70" y1="60" x2="130" y2="60" stroke="#2563eb" stroke-width="1.8" /><text x="96" y="74" fill="#2563eb" style="font-size:11px; font-weight:900;">1</text>
+                            <line x1="130" y1="35" x2="100" y2="35" stroke="#059669" stroke-width="1.8" /><text x="112" y="31" fill="#059669" style="font-size:11px; font-weight:900;">2</text>
+                            <line x1="100" y1="60" x2="100" y2="35" stroke="#7c3aed" stroke-width="1.8" /><text x="88" y="52" fill="#7c3aed" style="font-size:11px; font-weight:900;">3</text>
+                            <line x1="130" y1="85" x2="100" y2="85" stroke="#db2777" stroke-width="1.8" /><text x="112" y="100" fill="#db2777" style="font-size:11px; font-weight:900;">4</text>
+                            <line x1="100" y1="60" x2="100" y2="85" stroke="#d97706" stroke-width="1.8" /><text x="88" y="78" fill="#d97706" style="font-size:11px; font-weight:900;">5</text>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Table -->
+        <div class="card p-6 overflow-hidden shadow-sm">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold flex items-center gap-2 text-gray-800">
+                    <i class="fas fa-table-list text-green-500"></i> ผลการตรวจสอบและคำแนะนำการปรับแก้
+                </h2>
+                <span class="text-xs text-gray-400 font-medium">*Tolerance Standard ± 0.050 mm</span>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[1100px]">
+                    <thead>
+                        <tr class="bg-gray-50 border-y">
+                            <th class="py-4 px-4 text-xs font-bold text-gray-600 uppercase w-16 text-center">No.</th>
+                            <th class="py-4 px-4 text-xs font-bold text-gray-600 uppercase w-64">จุดตรวจสอบ</th>
+                            <th class="py-4 px-4 text-xs font-bold text-gray-600 uppercase text-center">Nominal</th>
+                            <th class="py-4 px-4 text-xs font-bold text-gray-600 uppercase text-center w-24">Tol.</th>
+                            <th class="py-4 px-4 text-xs font-bold text-gray-600 uppercase text-center">Actual</th>
+                            <th class="py-4 px-4 text-xs font-bold text-gray-600 uppercase text-center">Dev.</th>
+                            <th class="py-4 px-4 text-xs font-bold text-gray-600 uppercase text-center w-28">Status</th>
+                            <th class="py-4 px-4 text-xs font-bold text-gray-700 uppercase bg-blue-50/30">คำแนะนำการปรับจูน (Adjustment Advice)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultBody">
+                        <tr>
+                            <td colspan="8" class="py-20 text-center text-gray-400 italic bg-gray-50/30 rounded-b-xl">
+                                <div class="flex flex-col items-center gap-3">
+                                    <i class="fas fa-upload text-4xl text-gray-200"></i>
+                                    <span>กรุณาอัปโหลดไฟล์รายงานเพื่อเริ่มการวิเคราะห์</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Alert Modal -->
+    <div id="customAlert" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl max-sm:w-full max-w-lg mx-4 text-center border border-gray-200 shadow-2xl">
+            <h3 id="alertTitle" class="text-lg font-bold mb-2 text-gray-800"></h3>
+            <div id="alertMsg" class="text-gray-600 mb-6 text-sm text-left whitespace-pre-wrap max-h-60 overflow-y-auto font-mono text-xs p-4 bg-gray-50 rounded border"></div>
+            <button onclick="closeAlert()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-medium shadow-md hover:bg-blue-700 transition-colors">รับทราบ</button>
+        </div>
+    </div>
+
+    <script>
+        const modelName = "gemini-flash-latest";
+        
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const newJobBtn = document.getElementById('newJobBtn');
+        const previewContainer = document.getElementById('previewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const loader = document.getElementById('loader');
+        const resultBody = document.getElementById('resultBody');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+
+        let base64Image = null;
+
+        const POINT_COLORS = { 1: "#2563eb", 2: "#059669", 3: "#7c3aed", 4: "#db2777", 5: "#d97706" };
+        const NOMINALS = [
+            { id: 1, label: "ระยะรูซ้าย - รูขวา (Center Dist)", nominal: 30.5 },
+            { id: 2, label: "ระยะรูขวา - รูบน (X-Gap)", nominal: 16.5 },
+            { id: 3, label: "ระยะรูขวา - รูบน (Y-Gap)", nominal: 9.25 },
+            { id: 4, label: "ระยะรูขวา - รูล่าง (X-Gap)", nominal: 16.5 },
+            { id: 5, label: "ระยะรูขวา - รูล่าง (Y-Gap)", nominal: 9.25 }
+        ];
+
+        // --- Custom Alert System ---
+        function showAlert(title, msg) {
+            document.getElementById('alertTitle').innerText = title;
+            document.getElementById('alertMsg').innerText = msg;
+            document.getElementById('customAlert').classList.remove('hidden');
+        }
+        function closeAlert() { document.getElementById('customAlert').classList.add('hidden'); }
+
+        // --- File Upload Handlers (Click + Drag & Drop) ---
+        dropZone.onclick = () => {
+            fileInput.value = null; // Reset value so same file can be uploaded again
+            fileInput.click();
+        };
+
+        fileInput.onchange = (e) => {
+            if(e.target.files.length > 0) handleFile(e.target.files[0]);
+        };
+
+        // Drag & Drop Events
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showAlert("Error", "กรุณาเลือกไฟล์ภาพเท่านั้น");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                base64Image = e.target.result.split(',')[1];
+                imagePreview.src = e.target.result;
+                
+                dropZone.classList.add('hidden');
+                previewContainer.classList.remove('hidden');
+                analyzeBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage() {
+            base64Image = null;
+            imagePreview.src = "";
+            fileInput.value = "";
+            
+            previewContainer.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            analyzeBtn.disabled = true;
+        }
+
+        newJobBtn.onclick = () => location.reload();
+
+        // --- AI Processing ---
+        analyzeBtn.onclick = async () => {
+            const key = apiKeyInput.value.trim();
+            if (!key) {
+                showAlert("แจ้งเตือน", "⚠️ กรุณาใส่ Gemini API Key ก่อนทำการประมวลผล");
+                return;
+            }
+            if (!base64Image) {
+                showAlert("แจ้งเตือน", "⚠️ กรุณาอัปโหลดรูปภาพก่อน");
+                return;
+            }
+
+            loader.classList.remove('hidden');
+            analyzeBtn.disabled = true;
+
+            const apiURL = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+
+            const prompt = `You are a CMM Data Extractor. 
+            SCAN INSTRUCTION:
+            1. Analyze the uploaded CMM report image.
+            2. Find the ACTUAL values for these 5 nominal points: 30.5, 16.5, 9.25, 16.5, 9.25.
+            3. Ignore negative signs, use absolute values.
+            4. Return ONLY a JSON object in this format: {"actuals": [v1, v2, v3, v4, v5]}
+            5. Do not include any extra text or markdown formatting.`;
+
+            try {
+                const response = await fetch(apiURL, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': key 
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: prompt },
+                                { inlineData: { mimeType: "image/png", data: base64Image } }
+                            ]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errDetail = await response.json();
+                    throw new Error(errDetail.error?.message || JSON.stringify(errDetail, null, 2));
+                }
+
+                const result = await response.json();
+                let textResult = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                
+                const jsonMatch = textResult.match(/\{.*\}/s);
+                if (!jsonMatch) throw new Error("AI ตอบกลับมาผิดรูปแบบ: " + textResult);
+                
+                const data = JSON.parse(jsonMatch[0]);
+                if (data.actuals && Array.isArray(data.actuals)) {
+                    processAndRender(data.actuals);
+                    analyzeBtn.classList.add('hidden');
+                    newJobBtn.classList.remove('hidden');
+                } else {
+                    throw new Error("โครงสร้างข้อมูล JSON ไม่ถูกต้อง");
+                }
+            } catch (err) {
+                console.error("Analysis Error:", err);
+                showAlert("AI Analysis Error", "เกิดข้อผิดพลาดในการประมวลผล:\n" + err.message);
+                analyzeBtn.disabled = false;
+            } finally {
+                loader.classList.add('hidden');
+            }
+        };
+
+        function getAdjustmentData(id, dev) {
+            const absDev = Math.abs(dev);
+            let direction = "";
+            let rotation = 0; 
+
+            if (id === 1 || id === 2 || id === 4) { // X-Gap
+                direction = dev > 0 ? "ไปทางขวา" : "ไปทางซ้าย";
+                rotation = dev > 0 ? 90 : 270;
+            } else if (id === 3) { // Y-Gap P3
+                direction = dev > 0 ? "ไปข้างล่าง" : "ไปข้างบน";
+                rotation = dev > 0 ? 180 : 0;
+            } else if (id === 5) { // Y-Gap P5
+                direction = dev > 0 ? "ไปข้างบน" : "ไปข้างล่าง";
+                rotation = dev > 0 ? 0 : 180;
+            }
+
+            return { text: `ปรับแก้ ${direction} อีก ${absDev.toFixed(3)} mm`, rotation: rotation };
+        }
+
+        function processAndRender(actuals) {
+            resultBody.innerHTML = "";
+            NOMINALS.forEach((item, index) => {
+                const actual = Math.abs(parseFloat(actuals[index] || 0));
+                const dev = parseFloat((actual - item.nominal).toFixed(4));
+                const isPass = Math.abs(dev) <= 0.050;
+                const pointColor = POINT_COLORS[item.id];
+
+                let adviceHTML = isPass ? 
+                    `<div class="flex items-center gap-2 text-green-600 font-bold italic"><i class="fas fa-check-circle"></i><span>Complete</span></div>` :
+                    (() => {
+                        const adj = getAdjustmentData(item.id, dev);
+                        return `
+                            <div class="flex items-center gap-3">
+                                <div class="p-1.5 rounded-full" style="background-color: ${pointColor}20;">
+                                    <svg viewBox="0 0 24 24" class="w-4 h-4" style="color: ${pointColor}; transform: rotate(${adj.rotation}deg); fill: currentColor;">
+                                        <path d="M11 20V7.825l-5.575 5.575L4 12l8-8l8 8l-1.425 1.4L13 7.825V20h-2Z"/>
+                                    </svg>
+                                </div>
+                                <span class="text-[13px] font-semibold" style="color: ${pointColor};">${adj.text}</span>
+                            </div>`;
+                    })();
+
+                const row = document.createElement('tr');
+                row.className = `border-b transition hover:bg-gray-50 ${!isPass ? 'bg-red-50/10' : ''}`;
+                row.innerHTML = `
+                    <td class="py-5 px-4 text-center font-black text-lg" style="color: ${pointColor};">${item.id}</td>
+                    <td class="py-5 px-4 font-semibold text-gray-800 text-sm border-l-4" style="border-left-color: ${pointColor};">${item.label}</td>
+                    <td class="py-5 px-4 text-center text-gray-500 font-mono">${item.nominal.toFixed(3)}</td>
+                    <td class="py-5 px-4 text-center text-[11px] font-mono text-gray-400 italic">±0.050</td>
+                    <td class="py-5 px-4 text-center font-mono font-bold text-gray-900">${actual.toFixed(3)}</td>
+                    <td class="py-5 px-4 text-center font-mono ${!isPass ? 'text-red-500 font-bold' : 'text-blue-600'}">${dev > 0 ? '+' : ''}${dev.toFixed(3)}</td>
+                    <td class="py-5 px-4 text-center">
+                        <span class="${isPass ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'} border px-2 py-1 rounded-md text-[10px] font-black uppercase shadow-sm">
+                            ${isPass ? 'PASS' : 'FAIL'}
+                        </span>
+                    </td>
+                    <td class="py-5 px-4 bg-blue-50/5">${adviceHTML}</td>
+                `;
+                resultBody.appendChild(row);
+            });
+            resultBody.parentElement.parentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    </script>
+</body>
+</html>
