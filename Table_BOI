@@ -1,0 +1,2468 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบริหารจัดการปฏิทินตารางสอนและวันหยุด (7 วิชา 19 คอร์ส)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Thai -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .day-cell {
+            min-height: 105px;
+            transition: all 0.15s ease-in-out;
+        }
+        .day-cell:hover {
+            background-color: #f1f5f9;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-200 font-bold text-lg">
+                    ⚙️
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800 leading-tight">ระบบปฏิทินฝึกอบรม 7 สาขาวิชาช่าง & เทคโนโลยี</h1>
+                    <p class="text-xs text-slate-500 font-normal">ตารางอบรม 19 คอร์ส (พ.ย. 2569 เป็นต้นไป) • จัดสัปดาห์ละ 1 คอร์ส • ข้ามวันหยุดอัตโนมัติ</p>
+                </div>
+            </div>
+
+            <!-- Main Tab Buttons -->
+            <div class="flex items-center bg-slate-100 p-1 rounded-xl text-sm font-medium border border-slate-200">
+                <button id="tab-btn-calendar" onclick="switchView('calendar')" class="px-4 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    ปฏิทินรายเดือน
+                </button>
+                <button id="tab-btn-year" onclick="switchView('year')" class="px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                    ปฏิทินตลอดหลักสูตร (ข้ามปี)
+                </button>
+                <button id="tab-btn-explorer" onclick="switchView('explorer')" class="px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                    ตรวจสอบตารางแยก 7 วิชา (19 คอร์ส)
+                </button>
+            </div>
+
+            <!-- Action Buttons: Export Excel, Holidays, Add Session -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <!-- Status Badge -->
+                <div id="cloud-status-badge" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-700">
+                    <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span id="cloud-status-text" class="font-medium">เชื่อมต่อระบบคลาวด์แล้ว</span>
+                </div>
+
+                <!-- Export Excel Button (จุดหลักที่แถบด้านบน) -->
+                <button onclick="exportScheduleToExcel()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition flex items-center gap-1.5" title="ดาวน์โหลดไฟล์ Excel (.xlsx)">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1.8 14.5l-1.8-2.6-1.8 2.6H10.5l2.6-3.7-2.4-3.5h1.7l1.6 2.4 1.6-2.4h1.7l-2.4 3.5 2.6 3.7h-1.7zM13 9V3.5L18.5 9H13z"/>
+                    </svg>
+                    <span>ส่งออก Excel (.xlsx)</span>
+                </button>
+
+                <button onclick="openHolidayModal()" class="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs sm:text-sm font-semibold transition flex items-center gap-1.5">
+                    <span>🏖️</span>
+                    <span>วันหยุด</span>
+                </button>
+
+                <button onclick="openScheduleModal()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition flex items-center gap-1">
+                    <span>+</span>
+                    <span>ลงตาราง</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1">
+        
+        <!-- ================= CALENDAR VIEW ================= -->
+        <div id="calendar-view" class="space-y-4">
+            <!-- Calendar Navigation & Filter Toolbar -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                <!-- Month / Year Navigator -->
+                <div class="flex items-center gap-2">
+                    <button onclick="changeMonth(-1)" class="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <button onclick="goStartNov2569()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100">พ.ย. 2569 (เริ่มคอร์ส)</button>
+                    <button onclick="goToday()" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700">ปัจจุบัน</button>
+                    <button onclick="changeMonth(1)" class="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                    <h2 id="calendar-title" class="text-lg sm:text-xl font-bold text-slate-800 ml-2">เดือน ปี</h2>
+                </div>
+
+                <!-- Export Excel Quick Button in Monthly View -->
+                <div class="flex items-center gap-2">
+                    <button onclick="exportScheduleToExcel()" class="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold flex items-center gap-1.5 transition">
+                        <span>📊</span>
+                        <span>ดาวน์โหลด Excel ตารางสอน</span>
+                    </button>
+                </div>
+
+                <!-- Subject Quick Filters -->
+                <div class="w-full pt-2 border-t border-slate-100 flex items-center gap-1.5 flex-wrap text-xs">
+                    <span class="text-slate-500 font-medium mr-1">กรองวิชา:</span>
+                    <button id="filter-all" onclick="filterBySubject('all')" class="px-2.5 py-1 rounded-full font-medium border bg-indigo-50 border-indigo-200 text-indigo-700">ทั้งหมด (7 วิชา)</button>
+                    <div id="subject-filter-list" class="flex items-center gap-1.5 flex-wrap">
+                        <!-- Populated by renderSubjectFilters -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar Table Card -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <!-- Day of week headers -->
+                <div class="grid grid-cols-7 border-b border-slate-200 bg-slate-100/70 text-xs font-semibold text-center text-slate-600">
+                    <div class="py-2.5 text-rose-600">อาทิตย์</div>
+                    <div class="py-2.5">จันทร์</div>
+                    <div class="py-2.5">อังคาร</div>
+                    <div class="py-2.5">พุธ</div>
+                    <div class="py-2.5">พฤหัสบดี</div>
+                    <div class="py-2.5">ศุกร์</div>
+                    <div class="py-2.5 text-indigo-600">เสาร์</div>
+                </div>
+                <!-- Calendar Days Grid -->
+                <div id="calendar-days-grid" class="grid grid-cols-7 divide-x divide-y divide-slate-200 text-xs">
+                    <!-- Day cells injected dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= YEARLY CALENDAR VIEW ================= -->
+        <div id="year-view" class="hidden space-y-4">
+            <!-- Year Navigation Bar -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <button onclick="changeYear(-1)" class="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition" title="ปีก่อนหน้า">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <button onclick="setYear(2026)" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100">พ.ศ. 2569 (เริ่มคอร์ส)</button>
+                    <button onclick="setYear(2027)" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100">พ.ศ. 2570</button>
+                    <button onclick="changeYear(1)" class="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition" title="ปีถัดไป">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                    <h2 id="year-title" class="text-xl sm:text-2xl font-bold text-slate-800 ml-2">ปี พ.ศ. 2569 (ค.ศ. 2026)</h2>
+                </div>
+
+                <!-- Year Legend & Quick Stats -->
+                <div class="flex items-center gap-4 text-xs text-slate-600 flex-wrap">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                        <span>วันหยุด</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-indigo-600"></span>
+                        <span>มีคอร์สอบรม</span>
+                    </div>
+                    <div id="year-stats-summary" class="bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-lg text-indigo-700 font-semibold text-xs">
+                        สรุปปีนี้: อบรม 0 วัน | วันหยุด 0 วัน
+                    </div>
+                </div>
+            </div>
+
+            <!-- 12-Month Grid (3x4 on large screen, 2x6 on medium, 1x12 on mobile) -->
+            <div id="year-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <!-- 12 Mini Calendar Month Cards injected dynamically -->
+            </div>
+        </div>
+
+        <!-- ================= SUBJECT & 19 COURSES EXPLORER VIEW ================= -->
+        <div id="explorer-view" class="hidden space-y-6">
+            <!-- Top Subject Selector Bar -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">เลือกวิชาเพื่อตรวจดูตารางเรียน 19 คอร์สฝึกอบรม</h2>
+                        <p class="text-sm text-slate-500">คลิกที่วิชาเพื่อดูช่วงวันฝึกอบรมของคอร์สที่ 1 ถึง 19 (จัดสัปดาห์ละ 1 คอร์ส)</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportScheduleToExcel()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 shadow-xs">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1.8 14.5l-1.8-2.6-1.8 2.6H10.5l2.6-3.7-2.4-3.5h1.7l1.6 2.4 1.6-2.4h1.7l-2.4 3.5 2.6 3.7h-1.7zM13 9V3.5L18.5 9H13z"/></svg>
+                            Export Excel (19 คอร์ส)
+                        </button>
+                        <button onclick="openAutoGenerateModal()" class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1">
+                            ⚡ วางตาราง 19 สัปดาห์ใหม่อัตโนมัติ
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 7 Subjects Tabs -->
+                <div id="subject-tabs-container" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+                    <!-- Injected dynamically -->
+                </div>
+            </div>
+
+            <!-- Selected Subject Header Card -->
+            <div id="subject-detail-banner" class="rounded-2xl p-6 text-white shadow-md relative overflow-hidden transition-all">
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <span id="subject-badge-code" class="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-white/20 backdrop-blur-sm">PLC</span>
+                            <span id="subject-duration-badge" class="text-xs bg-white/20 px-2.5 py-0.5 rounded-md font-semibold">คอร์สละ 4 วัน</span>
+                            <span id="subject-stats-summary" class="text-xs bg-white/10 px-2.5 py-0.5 rounded-md">เปิดแล้ว 0/19 คอร์ส</span>
+                            <span class="text-xs bg-emerald-500/80 px-2.5 py-0.5 rounded-md font-semibold flex items-center gap-1">🛡️ แต่ละคอร์สไม่ทับซ้อนกัน 100%</span>
+                        </div>
+                        <h3 id="subject-banner-name" class="text-2xl font-bold mt-2">1. PLC (Programmable Logic Controller)</h3>
+                        <p id="subject-banner-desc" class="text-sm opacity-90 mt-1 max-w-xl">หลักสูตรฝึกอบรมทักษะเข้มข้น 19 คอร์ส เริ่มต้นพฤศจิกายน 2569 จัดสัปดาห์ละ 1 คอร์ส ข้ามวันหยุดราชการ</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="autoScheduleSingleSubject(currentExplorerSubjectId)" class="px-4 py-2 bg-white text-slate-900 rounded-xl text-xs sm:text-sm font-semibold shadow hover:bg-slate-50 transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                            จัดตารางอัตโนมัติเฉพาะวิชานี้ (19 คอร์ส)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 19 Courses Grid Listing -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <h4 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                        <span>รายการคอร์สฝึกอบรมทั้งหมด 19 คอร์สของวิชานี้</span>
+                        <span id="course-count-badge" class="text-xs bg-indigo-100 text-indigo-800 font-semibold px-2 py-0.5 rounded-full">19 คอร์ส</span>
+                    </h4>
+                    <div class="text-xs text-slate-500">
+                        คลิก "ตรวจสอบช่วงเวลา" เพื่อดูวันที่จัดอบรมแบบละเอียด
+                    </div>
+                </div>
+
+                <div id="course-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- 19 course cards injected by JS -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ================= MODAL: AUTO-GENERATE SCHEDULE 19 COURSES ================= -->
+    <div id="modal-auto-generate" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-emerald-600 text-white">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-white/20 text-white flex items-center justify-center font-bold text-lg">
+                        ⚡
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold">จัดตารางฝึกอบรมอัตโนมัติ 19 คอร์ส</h3>
+                        <p class="text-xs opacity-90">เริ่มตั้งแต่เดือนพฤศจิกายน 2569 สัปดาห์ละ 1 คอร์ส และหลบวันหยุด</p>
+                    </div>
+                </div>
+                <button onclick="closeAutoGenerateModal()" class="text-white/80 hover:text-white p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4 text-sm">
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 space-y-1">
+                    <div class="font-bold flex items-center gap-1.5">
+                        <span>📋 กฎเกณฑ์การจัดตารางที่กำหนด:</span>
+                    </div>
+                    <ul class="list-disc list-inside space-y-0.5 text-emerald-800">
+                        <li>เริ่มคอร์สที่ 1: สัปดาห์แรกของ <strong>พฤศจิกายน 2569 (2 พ.ย. 2569)</strong></li>
+                        <li>สัปดาห์ละ 1 คอร์ส ต่อเนื่องจนครบ 19 คอร์ส</li>
+                        <li><strong>PLC</strong>: 4 วัน/คอร์ส (จ.-พฤ.) | <strong>CNC</strong>: 5 วัน/คอร์ส (จ.-ศ.)</li>
+                        <li><strong>Robot</strong>: 3 วัน/คอร์ส (จ.-พ.) | <strong>App</strong>: 4 วัน/คอร์ส (จ.-พฤ.)</li>
+                        <li><strong>Machine Vision</strong>: 3 วัน/คอร์ส (พฤ.-ส.) | <strong>CAD-CAM</strong>: 6 วัน/คอร์ส (จ.-ส.)</li>
+                        <li><strong>EV Conversion</strong>: 3 วัน/คอร์ส (จ.-พ.)</li>
+                        <li>1 วัน สามารถซ้อนทับกันได้ครบสูงสุด 7 วิชา</li>
+                        <li><strong>แต่ละคอร์สของแต่ละวิชาต้องไม่มีวันทับกันโดยเด็ดขาด</strong></li>
+                        <li><strong>หากติดวันหยุดยาวระหว่างคอร์ส ระบบจะยกการสอนคอร์สนั้นๆ ตั้งแต่วันที่ 1 ไปจัดต่อหลังวันหยุดยาวสิ้นสุดลงทันที</strong></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">เลือกวิชาที่ต้องการจัดตาราง</label>
+                    <select id="auto-subject-target" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium">
+                        <option value="all">⭐ จัดพร้อมกันครบทั้ง 7 วิชา (แนะนำ)</option>
+                        <option value="1">1. PLC (4 วัน/คอร์ส จ.-พฤ.)</option>
+                        <option value="2">2. CNC (5 วัน/คอร์ส จ.-ศ.)</option>
+                        <option value="3">3. Robot (3 วัน/คอร์ส จ.-พ.)</option>
+                        <option value="4">4. App (4 วัน/คอร์ส จ.-พฤ.)</option>
+                        <option value="5">5. Machine Vision (3 วัน/คอร์ส พฤ.-ส.)</option>
+                        <option value="6">6. CAD-CAM (6 วัน/คอร์ส จ.-ส.)</option>
+                        <option value="7">7. EV Conversion (3 วัน/คอร์ส จ.-พ.)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">วันที่เริ่มต้นคอร์สแรก (คอร์สที่ 1)</label>
+                        <input type="date" id="auto-start-date" value="2026-11-02" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-medium">
+                        <span class="text-[10px] text-slate-500">วันจันทร์ที่ 2 พ.ย. 2569</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">การจัดการข้อมูลเดิม</label>
+                        <select id="auto-clear-existing" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium">
+                            <option value="replace">แทนที่ตารางเดิมของวิชาที่เลือก</option>
+                            <option value="append">เพิ่มต่อจากตารางเดิม</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <button onclick="closeAutoGenerateModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-100">ยกเลิก</button>
+                    <button onclick="executeAutoScheduling()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-md transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        เริ่มคำนวณและสร้างตาราง
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: COURSE SCHEDULE INSPECTOR (SPECIFIC COURSE DETAILS) ================= -->
+    <div id="modal-course-inspector" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div id="inspector-header" class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white">
+                <div>
+                    <span id="inspector-subj-badge" class="text-[11px] uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded font-bold">PLC</span>
+                    <h3 id="inspector-title" class="text-lg font-bold mt-1">คอร์สที่ 1 (หลักสูตรฝึกอบรม)</h3>
+                </div>
+                <button onclick="closeCourseInspector()" class="text-white/80 hover:text-white p-1 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div>
+                        <div class="text-xs text-slate-600">
+                            <span class="font-bold text-slate-800">จำนวนวันอบรมในคอร์สนี้:</span> 
+                            <span id="inspector-sessions-count" class="font-bold text-indigo-700">0 วัน</span>
+                        </div>
+                        <div id="inspector-date-range" class="text-[11px] text-slate-500 mt-0.5">
+                            ช่วงวันที่: ยังไม่มีกำหนดการ
+                        </div>
+                    </div>
+                    <button onclick="openScheduleModalForSpecificCourse()" class="px-3 py-1 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition">
+                        + เพิ่มวันอบรมให้คอร์สนี้
+                    </button>
+                </div>
+
+                <div class="overflow-hidden border border-slate-200 rounded-xl">
+                    <div class="max-h-72 overflow-y-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-600 uppercase tracking-wider sticky top-0 border-b border-slate-200">
+                                <tr>
+                                    <th class="py-2.5 px-3">ลำดับวัน</th>
+                                    <th class="py-2.5 px-3">วันที่จัดอบรม</th>
+                                    <th class="py-2.5 px-3">เวลา</th>
+                                    <th class="py-2.5 px-3">กลุ่ม / สถานที่</th>
+                                    <th class="py-2.5 px-3 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inspector-table-body" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="closeCourseInspector()" class="px-4 py-2 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl shadow-sm">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: HOLIDAY MANAGEMENT ================= -->
+    <div id="modal-holiday" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-rose-600 text-white">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🏖️</span>
+                    <div>
+                        <h3 class="text-base font-bold">จัดการวันหยุดและวันหยุดราชการ</h3>
+                        <p class="text-xs text-rose-100">ระบบจะไฮไลต์สีและข้ามวันเหล่านี้อัตโนมัติเมื่อจัดตาราง</p>
+                    </div>
+                </div>
+                <button onclick="closeHolidayModal()" class="text-white/80 hover:text-white p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <!-- Add Holiday Form -->
+                <form onsubmit="handleHolidaySubmit(event)" class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+                    <div class="font-bold text-slate-700 flex items-center justify-between">
+                        <span>+ เพิ่มวันหยุดใหม่</span>
+                        <button type="button" onclick="loadDefaultThaiHolidays()" class="text-[11px] text-indigo-600 hover:text-indigo-800 underline font-semibold">
+                            โหลดวันหยุด 2569-2570 เริ่มต้น
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-500 mb-1 font-medium">วันที่หยุด</label>
+                            <input type="date" id="holiday-date" required class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 font-medium">
+                        </div>
+                        <div>
+                            <label class="block text-slate-500 mb-1 font-medium">สีแถบไฮไลต์</label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="holiday-color" value="#f43f5e" class="w-10 h-8 rounded border border-slate-300 cursor-pointer p-0.5 bg-white">
+                                <span class="text-[11px] text-slate-400">เลือกสีเพื่อแสดงบนปฏิทิน</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-slate-500 mb-1 font-medium">ชื่อวันหยุด / หมายเหตุ</label>
+                        <input type="text" id="holiday-title" placeholder="เช่น วันสิ้นปี, วันสงกรานต์" required class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div class="flex justify-end pt-1">
+                        <button type="submit" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold shadow-sm transition">
+                            บันทึกวันหยุด
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Holiday List Container -->
+                <div>
+                    <div class="flex items-center justify-between text-xs mb-2">
+                        <span class="font-bold text-slate-700">รายการวันหยุดทั้งหมดในระบบ</span>
+                        <span id="holiday-count-badge" class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-semibold text-[10px]">0 วัน</span>
+                    </div>
+                    <div id="holiday-items-list" class="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="closeHolidayModal()" class="px-4 py-1.5 text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg">ปิดหน้าต่าง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: MANUAL SCHEDULE CREATION ================= -->
+    <div id="modal-schedule" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📅</span>
+                    <div>
+                        <h3 class="text-base font-bold">ลงตารางฝึกอบรม</h3>
+                        <p class="text-xs text-indigo-100">กำหนดวันและเวลาเรียนสำหรับ 7 สาขาวิชา</p>
+                    </div>
+                </div>
+                <button onclick="closeScheduleModal()" class="text-white/80 hover:text-white p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <form onsubmit="handleScheduleSubmit(event)" class="p-6 space-y-3.5 text-xs">
+                <!-- Mode Switcher -->
+                <div class="flex items-center gap-4 bg-slate-100 p-2 rounded-xl text-slate-700 font-medium">
+                    <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" name="schedule-mode" value="single" checked onchange="toggleScheduleMode('single')" class="text-indigo-600 focus:ring-indigo-500">
+                        <span>ระบุทีละวัน (เจาะจง)</span>
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" name="schedule-mode" value="batch" onchange="toggleScheduleMode('batch')" class="text-indigo-600 focus:ring-indigo-500">
+                        <span>จัดเป็นช่วงสัปดาห์ (หลบวันหยุดอัตโนมัติ)</span>
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-600 mb-1 font-bold">เลือกวิชา (1 ใน 7 วิชา)</label>
+                        <select id="modal-subject-select" onchange="onModalSubjectChange()" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg font-medium focus:ring-2 focus:ring-indigo-500">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-600 mb-1 font-bold">เลือกลำดับคอร์ส (1-19)</label>
+                        <select id="modal-course-select" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg font-medium focus:ring-2 focus:ring-indigo-500">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-600 mb-1 font-bold">เวลาเริ่ม</label>
+                        <input type="time" id="modal-time-start" value="09:00" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-slate-600 mb-1 font-bold">เวลาสิ้นสุด</label>
+                        <input type="time" id="modal-time-end" value="16:00" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg font-mono">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-600 mb-1 font-bold">ชื่อรอบ / คำอธิบาย</label>
+                    <input type="text" id="modal-round-name" value="การฝึกอบรมเชิงปฏิบัติการ" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg">
+                </div>
+
+                <div>
+                    <label class="block text-slate-600 mb-1 font-bold">สถานที่ / ห้องอบรม</label>
+                    <input type="text" id="modal-location" value="ห้องปฏิบัติการ" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg">
+                </div>
+
+                <!-- Single Date Box -->
+                <div id="mode-single-box">
+                    <label class="block text-slate-600 mb-1 font-bold">วันที่จัดอบรม</label>
+                    <input type="date" id="modal-date-single" required class="w-full px-2.5 py-2 border border-slate-300 rounded-lg font-medium">
+                </div>
+
+                <!-- Batch Date Box -->
+                <div id="mode-batch-box" class="hidden space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-500 mb-1">วันที่เริ่มต้น</label>
+                            <input type="date" id="modal-batch-start" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-slate-500 mb-1">วันที่สิ้นสุด</label>
+                            <input type="date" id="modal-batch-end" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-slate-500 mb-1">เลือกวันที่อบรมในสัปดาห์ (ข้ามวันหยุดให้อัตโนมัติ)</label>
+                        <div class="flex flex-wrap gap-2 text-[11px]">
+                            <label class="flex items-center gap-1"><input type="checkbox" name="batch-days" value="1" checked> จันทร์</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" name="batch-days" value="2" checked> อังคาร</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" name="batch-days" value="3" checked> พุธ</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" name="batch-days" value="4" checked> พฤหัสฯ</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" name="batch-days" value="5" checked> ศุกร์</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" name="batch-days" value="6"> เสาร์</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-2">
+                    <button type="button" onclick="closeScheduleModal()" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-100">ยกเลิก</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm">บันทึกตาราง</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 border border-slate-800">
+            <span id="toast-icon">✅</span>
+            <span id="toast-message">บันทึกข้อมูลเรียบร้อยแล้ว</span>
+        </div>
+    </div>
+
+    <script>
+        /* -------------------------------------------------------------
+           1. DATA STRUCTURE: 7 SUBJECTS & DURATION SPECIFICATIONS
+           - PLC: 4 days/course
+           - CNC: 5 days/course
+           - Robot: 3 days/course
+           - App: 4 days/course
+           - Machine Vision: 3 days/course
+           - CAD-CAM: 6 days/course
+           - EV Conversion: 3 days/course
+           ------------------------------------------------------------- */
+        const SUBJECTS = [
+            { 
+                id: 1, 
+                code: 'PLC', 
+                name: 'PLC (Programmable Logic Controller)', 
+                shortName: 'PLC', 
+                daysPerCourse: 4,
+                preferredDays: [1, 2, 3, 4], // Mon - Thu
+                color: '#2563eb', 
+                bgClass: 'bg-blue-600', 
+                lightBg: '#eff6ff', 
+                icon: '⚡',
+                location: 'ห้องปฏิบัติการ PLC ชั้น 2'
+            },
+            { 
+                id: 2, 
+                code: 'CNC', 
+                name: 'CNC (Computer Numerical Control)', 
+                shortName: 'CNC', 
+                daysPerCourse: 5,
+                preferredDays: [1, 2, 3, 4, 5], // Mon - Fri
+                color: '#ea580c', 
+                bgClass: 'bg-orange-600', 
+                lightBg: '#fff7ed', 
+                icon: '⚙️',
+                location: 'โรงประลอง CNC ชั้น 1'
+            },
+            { 
+                id: 3, 
+                code: 'Robot', 
+                name: 'Robot (Industrial Robotics & Automation)', 
+                shortName: 'Robot', 
+                daysPerCourse: 3,
+                preferredDays: [1, 2, 3], // Mon - Wed
+                color: '#7c3aed', 
+                bgClass: 'bg-purple-600', 
+                lightBg: '#f5f3ff', 
+                icon: '🤖',
+                location: 'ศูนย์นวัตกรรมหุ่นยนต์'
+            },
+            { 
+                id: 4, 
+                code: 'App', 
+                name: 'App (Application Development & IoT)', 
+                shortName: 'App', 
+                daysPerCourse: 4,
+                preferredDays: [1, 2, 3, 4], // Mon - Thu
+                color: '#0284c7', 
+                bgClass: 'bg-sky-600', 
+                lightBg: '#f0f9ff', 
+                icon: '📱',
+                location: 'ห้องปฏิบัติการคอมพิวเตอร์ 3'
+            },
+            { 
+                id: 5, 
+                code: 'Machine Vision', 
+                name: 'Machine Vision (AI & Inspection Systems)', 
+                shortName: 'Machine Vision', 
+                daysPerCourse: 3,
+                preferredDays: [4, 5, 6], // Thu - Sat (พฤหัสบดี - ศุกร์ - เสาร์)
+                color: '#059669', 
+                bgClass: 'bg-emerald-600', 
+                lightBg: '#ecfdf5', 
+                icon: '👁️',
+                location: 'ห้องปฏิบัติการ Machine Vision'
+            },
+            { 
+                id: 6, 
+                code: 'CAD-CAM', 
+                name: 'CAD-CAM (Computer Aided Design & Manufacturing)', 
+                shortName: 'CAD-CAM', 
+                daysPerCourse: 6,
+                preferredDays: [1, 2, 3, 4, 5, 6], // Mon - Sat
+                color: '#db2777', 
+                bgClass: 'bg-pink-600', 
+                lightBg: '#fdf2f8', 
+                icon: '📐',
+                location: 'ห้อง CAD/CAM Design Center'
+            },
+            { 
+                id: 7, 
+                code: 'EV Conversion', 
+                name: 'EV Conversion (Electric Vehicle Systems)', 
+                shortName: 'EV Conversion', 
+                daysPerCourse: 3,
+                preferredDays: [1, 2, 3], // Mon - Wed
+                color: '#4f46e5', 
+                bgClass: 'bg-indigo-600', 
+                lightBg: '#eef2ff', 
+                icon: '🔋',
+                location: 'ศูนย์ยานยนต์ไฟฟ้า EV Center'
+            }
+        ];
+
+        // Default calendar viewed date: November 2026 (2569) as requested
+        let currentDate = new Date(2026, 10, 1); // Month index 10 = November 2026
+        let currentYear = 2026; // Year view tracking
+        let selectedFilterSubject = 'all';
+        let currentExplorerSubjectId = 1;
+        let selectedInspectorSubjectId = 1;
+        let selectedInspectorCourseNo = 1;
+
+        // Local Storage Keys (v4 updated: strict non-overlapping courses & post-long-holiday shifting)
+        const STORAGE_KEY_SCHEDULES = 'edu_tech7_schedules_v6';
+        const STORAGE_KEY_HOLIDAYS = 'edu_tech7_holidays_v6';
+
+        let schedules = [];
+        let holidays = [];
+
+        function initializeData() {
+            try {
+                const storedHolidays = localStorage.getItem(STORAGE_KEY_HOLIDAYS);
+                const storedSchedules = localStorage.getItem(STORAGE_KEY_SCHEDULES);
+
+                if (storedHolidays) {
+                    holidays = JSON.parse(storedHolidays);
+                    // Explicitly remove Dec 7, 2026 if it was previously saved
+                    const prevCount = holidays.length;
+                    holidays = holidays.filter(h => h.date !== '2026-12-07');
+                    if (holidays.length !== prevCount) {
+                        saveHolidays();
+                    }
+                } else {
+                    seedThaiHolidays2569(false);
+                }
+
+                if (storedSchedules) {
+                    schedules = JSON.parse(storedSchedules);
+                    // Check if Machine Vision Course 5 and 8 are properly configured
+                    const mvC5 = schedules.find(s => s.subjectId === 5 && s.courseNo === 5);
+                    const mvC8 = schedules.find(s => s.subjectId === 5 && s.courseNo === 8);
+                    const needsUpdate = !mvC5 || mvC5.date === '2026-12-10' || (mvC8 && new Date(mvC8.date).getDay() !== 4);
+                    
+                    if (needsUpdate) {
+                        generateFullScheduleForAllSubjects(new Date('2026-11-02'), false);
+                    }
+                } else {
+                    // Automatically generate the 19 courses for all 7 subjects starting Nov 2569
+                    generateFullScheduleForAllSubjects(new Date('2026-11-02'), false);
+                }
+            } catch (e) {
+                console.error("Storage error:", e);
+                seedThaiHolidays2569(false);
+                generateFullScheduleForAllSubjects(new Date('2026-11-02'), false);
+            }
+        }
+
+        function saveSchedules() {
+            try {
+                localStorage.setItem(STORAGE_KEY_SCHEDULES, JSON.stringify(schedules));
+            } catch(e) {}
+        }
+
+        function saveHolidays() {
+            try {
+                localStorage.setItem(STORAGE_KEY_HOLIDAYS, JSON.stringify(holidays));
+            } catch(e) {}
+        }
+
+        // Standard official holidays for late 2026 to mid 2027 (พ.ศ. 2569 - 2570)
+        // Notice: Dec 7, 2026 removed as requested
+        function seedThaiHolidays2569(showToastNotice = true) {
+            holidays = [
+                // 2569 (2026)
+                { id: 'h_26_1', date: '2026-12-05', title: 'วันคล้ายวันพระบรมราชสมภพ ร.9 / วันพ่อแห่งชาติ', color: '#eab308' },
+                { id: 'h_26_3', date: '2026-12-10', title: 'วันรัฐธรรมนูญ', color: '#3b82f6' },
+                
+                // เทศกาลปีใหม่ 2569 - 2570 (30 ธ.ค. 69 - 3 ม.ค. 70)
+                { id: 'h_26_4', date: '2026-12-30', title: 'วันหยุดเทศกาลปีใหม่', color: '#f43f5e' },
+                { id: 'h_26_5', date: '2026-12-31', title: 'วันสิ้นปี (เทศกาลปีใหม่)', color: '#f43f5e' },
+                
+                // 2570 (2027)
+                { id: 'h_27_1', date: '2027-01-01', title: 'วันขึ้นปีใหม่', color: '#f43f5e' },
+                { id: 'h_27_2', date: '2027-01-02', title: 'วันหยุดเทศกาลปีใหม่', color: '#f43f5e' },
+                { id: 'h_27_3', date: '2027-01-03', title: 'วันหยุดเทศกาลปีใหม่', color: '#f43f5e' },
+                
+                { id: 'h_27_4', date: '2027-02-21', title: 'วันมาฆบูชา', color: '#f97316' },
+                { id: 'h_27_5', date: '2027-02-22', title: 'วันหยุดชดเชยวันมาฆบูชา', color: '#f97316' },
+                { id: 'h_27_6', date: '2027-04-06', title: 'วันจักรี', color: '#8b5cf6' },
+                { id: 'h_27_7', date: '2027-04-13', title: 'วันสงกรานต์', color: '#06b6d4' },
+                { id: 'h_27_8', date: '2027-04-14', title: 'วันสงกรานต์', color: '#06b6d4' },
+                { id: 'h_27_9', date: '2027-04-15', title: 'วันสงกรานต์', color: '#06b6d4' },
+                { id: 'h_27_10', date: '2027-05-01', title: 'วันแรงงานแห่งชาติ', color: '#ef4444' },
+                { id: 'h_27_11', date: '2027-05-04', title: 'วันฉัตรมงคล', color: '#eab308' },
+                { id: 'h_27_12', date: '2027-05-20', title: 'วันวิสาขบูชา', color: '#f97316' }
+            ];
+            // Guarantee removal of Dec 7, 2026
+            holidays = holidays.filter(h => h.date !== '2026-12-07');
+            saveHolidays();
+            renderHolidayList();
+            renderCalendar();
+            renderYearView();
+            if (showToastNotice) {
+                showToast('นำเข้าวันหยุดปีใหม่ 30 ธ.ค. 69 - 3 ม.ค. 70 เรียบร้อย (ไม่มีวันหยุด 7 ธ.ค.) 🏖️');
+            }
+        }
+
+        function loadDefaultThaiHolidays() {
+            seedThaiHolidays2569(true);
+        }
+
+        /* -------------------------------------------------------------
+           2. SCHEDULER ALGORITHM:
+           - 19 weeks (1 course per week)
+           - Starting November 2026 (Monday Nov 2, 2026)
+           - Subject specific duration (3 to 6 days per course)
+           - STRICT RULE: Any day marked as Holiday MUST BE SKIPPED and shifted!
+           - 1 day can have up to 7 subjects concurrently
+           ------------------------------------------------------------- */
+        function isHolidayDate(dateStr) {
+            return holidays.some(h => h.date === dateStr);
+        }
+
+        function formatDateKey(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function addDays(d, n) {
+            const result = new Date(d);
+            result.setDate(result.getDate() + n);
+            return result;
+        }
+
+        function getMondayOfWeek(d) {
+            const date = new Date(d);
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1); // 1 = Monday
+            date.setDate(diff);
+            date.setHours(0, 0, 0, 0);
+            return date;
+        }
+
+        function getNextMondayAfter(d) {
+            const date = new Date(d);
+            const day = date.getDay();
+            const daysUntilNextMon = (day === 0) ? 1 : (8 - day);
+            date.setDate(date.getDate() + daysUntilNextMon);
+            date.setHours(0, 0, 0, 0);
+            return date;
+        }
+
+        // Core generator: Calculates 19 course batches for a subject with strict NON-OVERLAP rule
+        // RULE: If any planned training day of a course collides with a holiday/long holiday,
+        // the entire course is deferred starting from Day 1 to the next available working block after the holiday ends!
+        function generateCoursesForSubject(subject, startDateObj) {
+            const generated = [];
+            let currentWeekMonday = getMondayOfWeek(new Date(startDateObj));
+
+            for (let courseNo = 1; courseNo <= 19; courseNo++) {
+                const targetDays = subject.daysPerCourse;
+                let plannedStartDayOffset = 0;
+                if (subject.preferredDays && subject.preferredDays.length > 0) {
+                    plannedStartDayOffset = subject.preferredDays[0] - 1; // 1 (Mon) -> 0 offset, 4 (Thu) -> 3 offset
+                }
+
+                let scheduledDays = [];
+                let candidateStart = new Date(currentWeekMonday);
+                candidateStart.setDate(candidateStart.getDate() + plannedStartDayOffset);
+
+                let wasDeferredFromHoliday = false;
+
+                // Loop until we find a contiguous or valid block where the entire course can run cleanly
+                while (true) {
+                    // Special case for Machine Vision: always align to Thursday if subject.preferredDays starts on Thursday (index 4)
+                    if (subject.id === 5 && candidateStart.getDay() !== 4) {
+                        // Move to next Thursday
+                        const diffToThu = (4 - candidateStart.getDay() + 7) % 7;
+                        candidateStart.setDate(candidateStart.getDate() + (diffToThu === 0 ? 7 : diffToThu));
+                    }
+
+                    let tempDays = [];
+                    let pointer = new Date(candidateStart);
+                    let hitHolidayInCourse = false;
+
+                    // Test scheduling targetDays starting from candidateStart
+                    while (tempDays.length < targetDays) {
+                        const dayOfWeek = pointer.getDay();
+                        const dateStr = formatDateKey(pointer);
+                        const isHoliday = isHolidayDate(dateStr);
+
+                        // If it's a Sunday or a holiday, this course collides with a holiday/off day!
+                        if (dayOfWeek === 0 || isHoliday) {
+                            if (isHoliday) {
+                                hitHolidayInCourse = true;
+                                break; // Stop testing this start block, defer entire course from Day 1!
+                            }
+                            // Advance if Sunday
+                            pointer.setDate(pointer.getDate() + 1);
+                            continue;
+                        }
+
+                        tempDays.push({
+                            date: dateStr,
+                            dateObj: new Date(pointer)
+                        });
+                        pointer.setDate(pointer.getDate() + 1);
+                    }
+
+                    if (hitHolidayInCourse) {
+                        wasDeferredFromHoliday = true;
+                        // For Thursday-Saturday courses (like Machine Vision), jump directly to the next week's Thursday
+                        if (subject.id === 5) {
+                            candidateStart = addDays(candidateStart, 7);
+                        } else {
+                            // Move candidateStart past the holiday break to the next non-holiday working day
+                            while (isHolidayDate(formatDateKey(pointer)) || pointer.getDay() === 0) {
+                                pointer.setDate(pointer.getDate() + 1);
+                            }
+                            candidateStart = new Date(pointer);
+                        }
+                    } else if (tempDays.length === targetDays) {
+                        // Found valid dates for the whole course from Day 1
+                        scheduledDays = tempDays;
+                        break;
+                    } else {
+                        candidateStart.setDate(candidateStart.getDate() + 1);
+                    }
+                }
+
+                // Add all days of this course into generated schedule list
+                const shiftNote = wasDeferredFromHoliday ? ' [ยกทั้งคอร์สเริ่มวันที่ 1 หลังวันหยุด]' : '';
+                scheduledDays.forEach((item, index) => {
+                    const dayIndex = index + 1;
+                    generated.push({
+                        id: `sc_${subject.id}_c${courseNo}_d${dayIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                        subjectId: subject.id,
+                        courseNo: courseNo,
+                        dayIndexInCourse: dayIndex,
+                        roundName: `คอร์สที่ ${courseNo} (วันที่ ${dayIndex}/${targetDays})${shiftNote}`,
+                        date: item.date,
+                        startTime: '09:00',
+                        endTime: '16:00',
+                        location: subject.location,
+                        shiftedFromHoliday: wasDeferredFromHoliday
+                    });
+                });
+
+                const lastCourseDateObj = scheduledDays[scheduledDays.length - 1].dateObj;
+                const nextMon = getNextMondayAfter(lastCourseDateObj);
+                const standardNextMon = addDays(currentWeekMonday, 7);
+
+                // Advance currentWeekMonday to the Monday following the completion of this course
+                if (nextMon > standardNextMon) {
+                    currentWeekMonday = nextMon;
+                } else {
+                    currentWeekMonday = standardNextMon;
+                }
+            }
+
+            return generated;
+        }
+
+        function generateFullScheduleForAllSubjects(startDateObj = new Date('2026-11-02'), notify = true) {
+            let allGenerated = [];
+            SUBJECTS.forEach(sub => {
+                const subSchedules = generateCoursesForSubject(sub, startDateObj);
+                allGenerated = allGenerated.concat(subSchedules);
+            });
+
+            schedules = allGenerated;
+            saveSchedules();
+
+            if (notify) {
+                showToast(`จัดตารางอบรมครบ 7 วิชา × 19 คอร์ส เรียบร้อยแล้ว (เริ่ม พ.ย. 2569) 🚀`);
+            }
+        }
+
+        function autoScheduleSingleSubject(subId) {
+            const sub = SUBJECTS.find(s => s.id === subId);
+            if (!sub) return;
+
+            // Remove existing for this subject
+            schedules = schedules.filter(s => s.subjectId !== subId);
+
+            const newItems = generateCoursesForSubject(sub, new Date('2026-11-02'));
+            schedules = schedules.concat(newItems);
+            saveSchedules();
+
+            renderCalendar();
+            renderExplorerSubjectTabs();
+            renderCourseCards();
+            showToast(`จัดตารางอัตโนมัติวิชา ${sub.name} (19 คอร์ส) สำเร็จ!`);
+        }
+
+        function executeAutoScheduling() {
+            const target = document.getElementById('auto-subject-target').value;
+            const startDateStr = document.getElementById('auto-start-date').value || '2026-11-02';
+            const clearMode = document.getElementById('auto-clear-existing').value;
+            const startDateObj = new Date(startDateStr);
+
+            if (target === 'all') {
+                if (clearMode === 'replace') {
+                    schedules = [];
+                }
+                SUBJECTS.forEach(sub => {
+                    if (clearMode === 'replace') {
+                        schedules = schedules.filter(s => s.subjectId !== sub.id);
+                    }
+                    const newItems = generateCoursesForSubject(sub, startDateObj);
+                    schedules = schedules.concat(newItems);
+                });
+            } else {
+                const subId = parseInt(target);
+                const sub = SUBJECTS.find(s => s.id === subId);
+                if (clearMode === 'replace') {
+                    schedules = schedules.filter(s => s.subjectId !== subId);
+                }
+                const newItems = generateCoursesForSubject(sub, startDateObj);
+                schedules = schedules.concat(newItems);
+            }
+
+            saveSchedules();
+            closeAutoGenerateModal();
+            renderCalendar();
+            renderExplorerSubjectTabs();
+            renderCourseCards();
+            showToast(`จัดตาราง 19 คอร์สสำเร็จ เรียบร้อยแล้ว! ✨`);
+        }
+
+        function openAutoGenerateModal() {
+            document.getElementById('modal-auto-generate').classList.remove('hidden');
+        }
+
+        function closeAutoGenerateModal() {
+            document.getElementById('modal-auto-generate').classList.add('hidden');
+        }
+
+        function goStartNov2569() {
+            currentDate = new Date(2026, 10, 1); // Nov 2026
+            renderCalendar();
+        }
+
+        /* -------------------------------------------------------------
+           3. CALENDAR RENDERING ENGINE (UP TO 7 SUBJECTS PER DAY)
+           ------------------------------------------------------------- */
+        const THAI_MONTHS = [
+            'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+            'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+        ];
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            currentYear = currentDate.getFullYear();
+            renderCalendar();
+            renderYearView();
+        }
+
+        function goToday() {
+            currentDate = new Date();
+            currentYear = currentDate.getFullYear();
+            renderCalendar();
+            renderYearView();
+        }
+
+        function changeYear(delta) {
+            currentYear += delta;
+            currentDate.setFullYear(currentYear);
+            renderYearView();
+            renderCalendar();
+        }
+
+        function setYear(yr) {
+            currentYear = yr;
+            currentDate.setFullYear(yr);
+            renderYearView();
+            renderCalendar();
+        }
+
+        function jumpToMonth(monthIndex) {
+            currentDate.setFullYear(currentYear);
+            currentDate.setMonth(monthIndex);
+            switchView('calendar');
+        }
+
+        function jumpToYearMonth(year, monthIndex) {
+            currentDate.setFullYear(year);
+            currentDate.setMonth(monthIndex);
+            switchView('calendar');
+        }
+
+        function renderCalendar() {
+            const titleEl = document.getElementById('calendar-title');
+            const month = currentDate.getMonth();
+            const year = currentDate.getFullYear();
+            if (titleEl) {
+                titleEl.textContent = `${THAI_MONTHS[month]} ${year + 543} (ค.ศ. ${year})`;
+            }
+
+            const gridEl = document.getElementById('calendar-days-grid');
+            if (!gridEl) return;
+            gridEl.innerHTML = '';
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const prevMonthDays = new Date(year, month, 0).getDate();
+
+            const pad = (n) => String(n).padStart(2, '0');
+
+            // Previous month trailing days
+            for (let i = firstDayIndex - 1; i >= 0; i--) {
+                const d = prevMonthDays - i;
+                const prevMonthDate = new Date(year, month - 1, d);
+                const dStr = `${prevMonthDate.getFullYear()}-${pad(prevMonthDate.getMonth() + 1)}-${pad(d)}`;
+                gridEl.appendChild(createDayCell(d, dStr, true));
+            }
+
+            // Current month days
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+                gridEl.appendChild(createDayCell(d, dStr, false));
+            }
+
+            // Next month leading days (to fill full week rows)
+            const totalCells = gridEl.children.length;
+            const remaining = (totalCells % 7 === 0) ? 0 : 7 - (totalCells % 7);
+            for (let d = 1; d <= remaining; d++) {
+                const nextMonthDate = new Date(year, month + 1, d);
+                const dStr = `${nextMonthDate.getFullYear()}-${pad(nextMonthDate.getMonth() + 1)}-${pad(d)}`;
+                gridEl.appendChild(createDayCell(d, dStr, true));
+            }
+        }
+
+        /* -------------------------------------------------------------
+           CALENDAR DAY CELL CREATOR
+           ------------------------------------------------------------- */
+        function createDayCell(dayNum, dateStr, isAdjacent) {
+            const cell = document.createElement('div');
+            cell.className = `day-cell p-2 border border-slate-100 flex flex-col justify-between rounded-xl relative transition-all ${
+                isAdjacent ? 'bg-slate-50/70 opacity-40' : 'bg-white'
+            }`;
+
+            // Header of day cell
+            const headerRow = document.createElement('div');
+            headerRow.className = 'flex items-center justify-between mb-1 gap-1';
+
+            const dayDate = new Date(dateStr);
+            const dayOfWeek = dayDate.getDay();
+            const isSunday = dayOfWeek === 0;
+            const isSaturday = dayOfWeek === 6;
+
+            const dayBadge = document.createElement('span');
+            dayBadge.className = `text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                isSunday ? 'text-rose-600 bg-rose-50' : isSaturday ? 'text-indigo-600 bg-indigo-50' : 'text-slate-700'
+            }`;
+            dayBadge.textContent = dayNum;
+            headerRow.appendChild(dayBadge);
+
+            // Check for holiday
+            const holiday = holidays.find(h => h.date === dateStr);
+            if (holiday) {
+                const holBadge = document.createElement('span');
+                holBadge.className = 'text-[9px] font-semibold px-1.5 py-0.5 rounded text-white truncate max-w-[85px] sm:max-w-[125px] shadow-2xs shrink-0';
+                holBadge.style.backgroundColor = holiday.color || '#f43f5e';
+                holBadge.title = holiday.title;
+                holBadge.textContent = `🏖️ ${holiday.title}`;
+                headerRow.appendChild(holBadge);
+            } else {
+                const addBtn = document.createElement('button');
+                addBtn.className = 'text-[11px] text-slate-300 hover:text-indigo-600 hover:bg-slate-100 rounded px-1 transition';
+                addBtn.title = 'ลงตารางในวันนี้';
+                addBtn.innerHTML = '+';
+                addBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openScheduleModal(dateStr);
+                };
+                headerRow.appendChild(addBtn);
+            }
+
+            cell.appendChild(headerRow);
+
+            // Schedules inside this day
+            const sessionList = document.createElement('div');
+            sessionList.className = 'space-y-1 overflow-hidden flex-1';
+
+            const daySchedules = schedules.filter(s => {
+                if (s.date !== dateStr) return false;
+                if (selectedFilterSubject === 'all') return true;
+                return s.subjectId === parseInt(selectedFilterSubject);
+            });
+
+            const maxDisplay = 3;
+            daySchedules.slice(0, maxDisplay).forEach(item => {
+                const sub = SUBJECTS.find(s => s.id === item.subjectId);
+                const itemBtn = document.createElement('button');
+                itemBtn.className = 'w-full text-left text-[10px] px-1.5 py-0.5 rounded font-medium text-white truncate flex items-center justify-between shadow-2xs transition hover:brightness-95';
+                itemBtn.style.backgroundColor = sub ? sub.color : '#4f46e5';
+                itemBtn.title = `${sub ? sub.name : ''} - คอร์สที่ ${item.courseNo}\n${item.startTime} - ${item.endTime} น. @ ${item.location}`;
+
+                const isShifted = item.shiftedFromHoliday;
+                itemBtn.innerHTML = `
+                    <span class="truncate">${sub ? sub.code : ''} C${String(item.courseNo).padStart(2, '0')}</span>
+                    ${isShifted ? '<span class="text-[9px] ml-1 opacity-90">🔄</span>' : ''}
+                `;
+                itemBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openCourseInspector(item.subjectId, item.courseNo);
+                };
+                sessionList.appendChild(itemBtn);
+            });
+
+            if (daySchedules.length > maxDisplay) {
+                const moreTag = document.createElement('div');
+                moreTag.className = 'text-[10px] text-slate-500 font-semibold text-center cursor-pointer hover:text-indigo-600 transition';
+                moreTag.textContent = `+ อีก ${daySchedules.length - maxDisplay} วิชา`;
+                moreTag.onclick = (e) => {
+                    e.stopPropagation();
+                    openDayOverview(dateStr, daySchedules, holiday);
+                };
+                sessionList.appendChild(moreTag);
+            }
+
+            cell.appendChild(sessionList);
+
+            cell.onclick = () => {
+                if (daySchedules.length > 0) {
+                    openDayOverview(dateStr, daySchedules, holiday);
+                } else {
+                    openScheduleModal(dateStr);
+                }
+            };
+
+            return cell;
+        }
+
+        /* -------------------------------------------------------------
+           CROSS-YEAR MULTI-MONTH VIEW (เห็นทุกเดือนที่มีการสอนข้ามปีในหน้าเดียว)
+           ------------------------------------------------------------- */
+        function renderYearView() {
+            const yearGrid = document.getElementById('year-grid');
+            if (!yearGrid) return;
+            yearGrid.innerHTML = '';
+
+            const pad = (n) => String(n).padStart(2, '0');
+
+            // Determine active schedules according to selectedFilterSubject
+            const activeSchedules = schedules.filter(s => {
+                if (selectedFilterSubject === 'all') return true;
+                return s.subjectId === parseInt(selectedFilterSubject);
+            });
+
+            // Find date boundary across years
+            let startYear = 2026;
+            let startMonth = 10; // November (0-indexed)
+            let endYear = 2027;
+            let endMonth = 4; // May (0-indexed) as safe default
+
+            if (activeSchedules.length > 0) {
+                const sortedDates = [...activeSchedules].map(s => s.date).sort();
+                const minD = new Date(sortedDates[0]);
+                const maxD = new Date(sortedDates[sortedDates.length - 1]);
+
+                startYear = minD.getFullYear();
+                startMonth = minD.getMonth();
+                endYear = maxD.getFullYear();
+                endMonth = maxD.getMonth();
+            }
+
+            // Ensure we cover at least from Nov 2026
+            if (startYear > 2026 || (startYear === 2026 && startMonth > 10)) {
+                startYear = 2026;
+                startMonth = 10;
+            }
+
+            // Build month list from (startYear, startMonth) to (endYear, endMonth)
+            const monthList = [];
+            let curY = startYear;
+            let curM = startMonth;
+
+            while (curY < endYear || (curY === endYear && curM <= endMonth)) {
+                monthList.push({ year: curY, month: curM });
+                curM++;
+                if (curM > 11) {
+                    curM = 0;
+                    curY++;
+                }
+            }
+
+            // Calculate overall totals for active scope
+            let totalTrainingDaysInScope = 0;
+            let totalHolidaysInScope = 0;
+            let totalUniqueCourses = new Set();
+
+            monthList.forEach(({ year, month }) => {
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+                    const hasHoliday = holidays.some(h => h.date === dStr);
+                    const matching = schedules.filter(s => {
+                        if (s.date !== dStr) return false;
+                        if (selectedFilterSubject === 'all') return true;
+                        return s.subjectId === parseInt(selectedFilterSubject);
+                    });
+
+                    if (hasHoliday) totalHolidaysInScope++;
+                    if (matching.length > 0) {
+                        totalTrainingDaysInScope++;
+                        matching.forEach(m => totalUniqueCourses.add(`${m.subjectId}_${m.courseNo}`));
+                    }
+                }
+            });
+
+            // Update title and stats badge
+            const yearTitle = document.getElementById('year-title');
+            const yearSubtitle = document.getElementById('year-subtitle');
+            const statsSummary = document.getElementById('year-stats-summary');
+
+            const selectedSubjObj = (selectedFilterSubject !== 'all') 
+                ? SUBJECTS.find(s => s.id === parseInt(selectedFilterSubject)) 
+                : null;
+
+            if (yearTitle) {
+                if (selectedSubjObj) {
+                    yearTitle.textContent = `ปฏิทินตลอดหลักสูตร: วิชา ${selectedSubjObj.name} (19 คอร์ส)`;
+                } else {
+                    yearTitle.textContent = `ปฏิทินตลอดหลักสูตร 19 คอร์ส ครบ 7 วิชา (พ.ศ. 2569 - 2570)`;
+                }
+            }
+
+            if (yearSubtitle) {
+                const startLabel = `${THAI_MONTHS[startMonth]} ${startYear + 543}`;
+                const endLabel = `${THAI_MONTHS[endMonth]} ${endYear + 543}`;
+                yearSubtitle.textContent = `ช่วงเวลาการสอน: ${startLabel} ถึง ${endLabel} (รวม ${monthList.length} เดือนที่มีการจัดอบรมในหน้าเดียว)`;
+            }
+
+            if (statsSummary) {
+                if (selectedSubjObj) {
+                    statsSummary.innerHTML = `
+                        <span class="font-bold text-indigo-800">${selectedSubjObj.shortName}:</span> 
+                        จัด ${totalTrainingDaysInScope} วัน (${totalUniqueCourses.size}/19 คอร์ส) • วันหยุด ${totalHolidaysInScope} วัน
+                    `;
+                } else {
+                    statsSummary.textContent = `รวมทั้ง 7 วิชา: อบรม ${totalTrainingDaysInScope} วัน • วันหยุด ${totalHolidaysInScope} วัน (${monthList.length} เดือน)`;
+                }
+            }
+
+            // Render each month card
+            monthList.forEach(({ year, month }) => {
+                const monthCard = document.createElement('div');
+                monthCard.className = 'bg-white rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition p-3.5 flex flex-col justify-between';
+
+                const firstDayIndex = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+                let monthTrainingDays = 0;
+                let monthHolidayDays = 0;
+                let monthCourseSet = new Set();
+
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+                    const hasHoliday = holidays.some(h => h.date === dStr);
+                    const matching = schedules.filter(s => {
+                        if (s.date !== dStr) return false;
+                        if (selectedFilterSubject === 'all') return true;
+                        return s.subjectId === parseInt(selectedFilterSubject);
+                    });
+
+                    if (hasHoliday) monthHolidayDays++;
+                    if (matching.length > 0) {
+                        monthTrainingDays++;
+                        matching.forEach(m => monthCourseSet.add(`${m.subjectId}_${m.courseNo}`));
+                    }
+                }
+
+                // Header
+                const header = document.createElement('div');
+                header.className = 'flex items-center justify-between border-b border-slate-100 pb-2 mb-2';
+                
+                const thaiYearShort = year + 543;
+                const is2569 = year === 2026;
+
+                header.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <h3 class="font-bold text-sm text-slate-800">${THAI_MONTHS[month]} ${thaiYearShort}</h3>
+                            <span class="text-[9px] font-bold px-1.5 py-0.2 rounded ${is2569 ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}">
+                                ${is2569 ? '2569' : '2570'}
+                            </span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-0.5">
+                            อบรม ${monthTrainingDays} วัน ${monthCourseSet.size > 0 ? `(${monthCourseSet.size} คอร์ส)` : ''} ${monthHolidayDays > 0 ? `• หยุด ${monthHolidayDays} วัน` : ''}
+                        </p>
+                    </div>
+                    <button onclick="jumpToYearMonth(${year}, ${month})" class="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-0.5 rounded-md transition shrink-0" title="เปิดดูปฏิทินละเอียดเดือนนี้">
+                        ดูรายเดือน ↗
+                    </button>
+                `;
+                monthCard.appendChild(header);
+
+                // Weekday Header
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'grid grid-cols-7 text-center text-[10px] font-semibold text-slate-400 mb-1';
+                dayHeader.innerHTML = `
+                    <span class="text-rose-500">อา</span>
+                    <span>จ</span>
+                    <span>อ</span>
+                    <span>พ</span>
+                    <span>พฤ</span>
+                    <span>ศ</span>
+                    <span class="text-indigo-500">ส</span>
+                `;
+                monthCard.appendChild(dayHeader);
+
+                // Mini Grid
+                const miniGrid = document.createElement('div');
+                miniGrid.className = 'grid grid-cols-7 gap-1 text-center text-xs';
+
+                for (let i = 0; i < firstDayIndex; i++) {
+                    const emptyCell = document.createElement('div');
+                    emptyCell.className = 'h-6 text-[10px]';
+                    miniGrid.appendChild(emptyCell);
+                }
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+                    const holiday = holidays.find(h => h.date === dStr);
+                    const daySchedules = schedules.filter(s => {
+                        if (s.date !== dStr) return false;
+                        if (selectedFilterSubject === 'all') return true;
+                        return s.subjectId === parseInt(selectedFilterSubject);
+                    });
+
+                    const dayBtn = document.createElement('button');
+                    dayBtn.className = 'h-6 rounded-md flex flex-col items-center justify-center relative text-[11px] font-medium transition cursor-pointer hover:ring-2 hover:ring-indigo-300';
+
+                    if (holiday && daySchedules.length > 0) {
+                        dayBtn.className += ' bg-rose-50 text-rose-700 font-bold border border-rose-300';
+                        dayBtn.title = `${formatThaiDate(dStr)}\n🏖️ วันหยุด: ${holiday.title}\n📚 อบรม ${daySchedules.length} วิชา`;
+                    } else if (holiday) {
+                        dayBtn.className += ' bg-rose-100 text-rose-700 font-bold';
+                        dayBtn.title = `${formatThaiDate(dStr)}\n🏖️ วันหยุด: ${holiday.title}`;
+                    } else if (daySchedules.length > 0) {
+                        const subj = SUBJECTS.find(s => s.id === daySchedules[0].subjectId);
+                        dayBtn.className += ' text-white font-semibold shadow-2xs';
+                        dayBtn.style.backgroundColor = (daySchedules.length > 1) ? '#4338ca' : (subj ? subj.color : '#2563eb');
+                        dayBtn.title = `${formatThaiDate(dStr)}\n📚 อบรม: ${daySchedules.map(item => {
+                            const su = SUBJECTS.find(s => s.id === item.subjectId);
+                            return `${su ? su.shortName : ''} (C${item.courseNo})`;
+                        }).join(', ')}`;
+                    } else {
+                        dayBtn.className += ' text-slate-700 hover:bg-slate-100';
+                        dayBtn.title = formatThaiDate(dStr);
+                    }
+
+                    dayBtn.textContent = day;
+                    dayBtn.onclick = () => {
+                        currentDate.setFullYear(year);
+                        currentDate.setMonth(month);
+                        if (daySchedules.length > 0) {
+                            openDayOverview(dStr, daySchedules, holiday);
+                        } else {
+                            openScheduleModal(dStr);
+                        }
+                    };
+
+                    miniGrid.appendChild(dayBtn);
+                }
+
+                monthCard.appendChild(miniGrid);
+                yearGrid.appendChild(monthCard);
+            });
+        }
+
+        function filterBySubject(subjectId) {
+            selectedFilterSubject = subjectId;
+
+            const allBtn = document.getElementById('filter-all');
+            if (subjectId === 'all') {
+                allBtn.className = 'px-2.5 py-1 rounded-full font-medium border bg-indigo-50 border-indigo-200 text-indigo-700';
+            } else {
+                allBtn.className = 'px-2.5 py-1 rounded-full font-medium border bg-white border-slate-200 text-slate-600';
+            }
+
+            SUBJECTS.forEach(sub => {
+                const btn = document.getElementById(`filter-sub-${sub.id}`);
+                if (btn) {
+                    if (subjectId === sub.id) {
+                        btn.className = `px-2.5 py-1 rounded-full font-semibold border text-white shadow-xs`;
+                        btn.style.backgroundColor = sub.color;
+                        btn.style.borderColor = sub.color;
+                    } else {
+                        btn.className = `px-2.5 py-1 rounded-full font-medium border text-slate-600 border-slate-200 hover:border-slate-300 bg-white`;
+                        btn.style.backgroundColor = '';
+                        btn.style.borderColor = '';
+                    }
+                }
+            });
+
+            renderCalendar();
+        }
+
+        function renderExplorerSubjectTabs() {
+            const tabsContainer = document.getElementById('subject-tabs-container');
+            tabsContainer.innerHTML = '';
+
+            SUBJECTS.forEach(sub => {
+                const isSelected = sub.id === currentExplorerSubjectId;
+                const tab = document.createElement('button');
+                tab.onclick = () => selectExplorerSubject(sub.id);
+                tab.className = `p-3 rounded-xl border text-left transition flex flex-col justify-between ${
+                    isSelected 
+                        ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/50' 
+                        : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50'
+                }`;
+
+                const subSchedules = schedules.filter(s => s.subjectId === sub.id);
+                const scheduledCourseCount = new Set(subSchedules.map(s => s.courseNo)).size;
+
+                tab.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xl">${sub.icon}</span>
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white" style="background-color: ${sub.color}">${sub.code}</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-xs sm:text-sm text-slate-800 truncate">${sub.shortName}</h4>
+                        <div class="flex items-center justify-between mt-1 text-[11px] text-slate-500">
+                            <span>คอร์สละ ${sub.daysPerCourse} วัน</span>
+                            <span class="font-semibold text-indigo-600">${scheduledCourseCount}/19</span>
+                        </div>
+                    </div>
+                `;
+                tabsContainer.appendChild(tab);
+            });
+
+            updateSubjectBanner();
+            renderCourseCards();
+        }
+
+        function selectExplorerSubject(subjectId) {
+            currentExplorerSubjectId = subjectId;
+            renderExplorerSubjectTabs();
+        }
+
+        function updateSubjectBanner() {
+            const sub = SUBJECTS.find(s => s.id === currentExplorerSubjectId) || SUBJECTS[0];
+            const banner = document.getElementById('subject-detail-banner');
+            banner.style.backgroundColor = sub.color;
+
+            document.getElementById('subject-badge-code').textContent = `${sub.code} (วิชาที่ ${sub.id})`;
+            document.getElementById('subject-duration-badge').textContent = `คอร์สละ ${sub.daysPerCourse} วัน`;
+            document.getElementById('subject-banner-name').textContent = `${sub.id}. ${sub.name}`;
+            
+            const subSchedules = schedules.filter(s => s.subjectId === sub.id);
+            const scheduledCourses = new Set(subSchedules.map(s => s.courseNo)).size;
+            document.getElementById('subject-stats-summary').textContent = `ลงแล้ว ${scheduledCourses}/19 คอร์ส (${subSchedules.length} วันอบรม)`;
+            document.getElementById('course-count-badge').textContent = `19 คอร์ส (${sub.daysPerCourse} วัน/คอร์ส)`;
+        }
+
+        function renderCourseCards() {
+            const container = document.getElementById('course-cards-container');
+            container.innerHTML = '';
+
+            const sub = SUBJECTS.find(s => s.id === currentExplorerSubjectId) || SUBJECTS[0];
+
+            for (let courseNo = 1; courseNo <= 19; courseNo++) {
+                const courseSchedules = schedules.filter(s => s.subjectId === sub.id && s.courseNo === courseNo);
+                courseSchedules.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl border border-slate-200 p-4 shadow-2xs hover:shadow-md transition flex flex-col justify-between';
+
+                const hasSchedules = courseSchedules.length > 0;
+                let scheduleSnippet = '';
+
+                if (hasSchedules) {
+                    const firstDate = courseSchedules[0].date;
+                    const lastDate = courseSchedules[courseSchedules.length - 1].date;
+                    const dateDisplay = (firstDate === lastDate) 
+                        ? formatThaiDate(firstDate) 
+                        : `${formatThaiDate(firstDate)} ถึง ${formatThaiDate(lastDate)}`;
+                    
+                    const isFull = courseSchedules.length >= sub.daysPerCourse;
+
+                    scheduleSnippet = `
+                        <div class="mt-2.5 p-2 rounded-lg bg-emerald-50 border border-emerald-100 text-xs">
+                            <div class="flex items-center justify-between text-emerald-800 font-semibold">
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    <span>จัดแล้ว ${courseSchedules.length}/${sub.daysPerCourse} วัน</span>
+                                </span>
+                                <span class="text-[10px] px-1.5 py-0.2 rounded ${isFull ? 'bg-emerald-200 text-emerald-800' : 'bg-amber-200 text-amber-800'}">
+                                    ${isFull ? 'ครบกำหนด' : 'ยังไม่ครบ'}
+                                </span>
+                            </div>
+                            <div class="text-[11px] text-emerald-700 mt-1 font-medium truncate">
+                                📅 ${dateDisplay}
+                            </div>
+                            <div class="text-[10px] text-slate-500 mt-0.5">
+                                เวลา: ${courseSchedules[0].startTime} - ${courseSchedules[0].endTime} น.
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    scheduleSnippet = `
+                        <div class="mt-2.5 p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-400 flex items-center justify-between">
+                            <span>ยังไม่มีการลงตารางสอน</span>
+                            <span class="text-[10px] text-slate-400">(ต้องใช้ ${sub.daysPerCourse} วัน)</span>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background-color: ${sub.lightBg}; color: ${sub.color}">
+                                ${sub.code} คอร์สที่ ${String(courseNo).padStart(2, '0')}/19
+                            </span>
+                            <span class="text-[11px] font-medium ${hasSchedules ? 'text-emerald-600' : 'text-slate-400'}">
+                                ${hasSchedules ? '● มีกำหนดการ' : '○ รอลงตาราง'}
+                            </span>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm leading-snug">
+                            หลักสูตรฝึกอบรม ${sub.shortName} คอร์สที่ ${courseNo}
+                        </h4>
+                        <div class="text-[11px] text-slate-500 mt-0.5">
+                            ระยะเวลาอบรมมาตรฐาน: <strong>${sub.daysPerCourse} วัน</strong>
+                        </div>
+                        ${scheduleSnippet}
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <button onclick="openCourseInspector(${sub.id}, ${courseNo})" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            ตรวจสอบช่วงเวลา
+                        </button>
+                        <button onclick="openScheduleModalForQuickCourse(${sub.id}, ${courseNo})" class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition">
+                            + จัดวันอบรม
+                        </button>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            }
+        }
+
+        /* -------------------------------------------------------------
+           4. SUBJECT FILTER & EXPLORER VIEW (7 SUBJECTS X 19 COURSES)
+           ------------------------------------------------------------- */
+        function renderSubjectFilters() {
+            const container = document.getElementById('subject-filter-list');
+            const yearContainer = document.getElementById('year-subject-filter-list');
+            
+            if (container) container.innerHTML = '';
+            if (yearContainer) yearContainer.innerHTML = '';
+
+            SUBJECTS.forEach(sub => {
+                // Monthly view button
+                if (container) {
+                    const btn = document.createElement('button');
+                    btn.id = `filter-sub-${sub.id}`;
+                    btn.className = `px-2.5 py-1 rounded-full font-medium border text-slate-600 border-slate-200 hover:border-slate-300 transition flex items-center gap-1`;
+                    btn.innerHTML = `<span class="w-2 h-2 rounded-full" style="background-color: ${sub.color}"></span> ${sub.shortName} (${sub.daysPerCourse}ว.)`;
+                    btn.onclick = () => filterBySubject(sub.id);
+                    container.appendChild(btn);
+                }
+
+                // Cross-year view button
+                if (yearContainer) {
+                    const yBtn = document.createElement('button');
+                    yBtn.id = `year-filter-sub-${sub.id}`;
+                    yBtn.className = `px-2.5 py-1 rounded-full font-medium border text-slate-600 border-slate-200 hover:border-slate-300 transition flex items-center gap-1`;
+                    yBtn.innerHTML = `<span class="w-2 h-2 rounded-full" style="background-color: ${sub.color}"></span> ${sub.shortName}`;
+                    yBtn.onclick = () => filterBySubject(sub.id);
+                    yearContainer.appendChild(yBtn);
+                }
+            });
+        }
+
+        function filterBySubject(subjectId) {
+            selectedFilterSubject = subjectId;
+
+            // Monthly view main button
+            const allBtn = document.getElementById('filter-all');
+            if (allBtn) {
+                if (subjectId === 'all') {
+                    allBtn.className = 'px-2.5 py-1 rounded-full font-medium border bg-indigo-50 border-indigo-200 text-indigo-700';
+                } else {
+                    allBtn.className = 'px-2.5 py-1 rounded-full font-medium border bg-white border-slate-200 text-slate-600';
+                }
+            }
+
+            // Cross-year view main button
+            const yearAllBtn = document.getElementById('year-filter-all');
+            if (yearAllBtn) {
+                if (subjectId === 'all') {
+                    yearAllBtn.className = 'px-2.5 py-1 rounded-full font-medium border bg-indigo-50 border-indigo-200 text-indigo-700';
+                } else {
+                    yearAllBtn.className = 'px-2.5 py-1 rounded-full font-medium border bg-white border-slate-200 text-slate-600';
+                }
+            }
+
+            SUBJECTS.forEach(sub => {
+                const btn = document.getElementById(`filter-sub-${sub.id}`);
+                const yBtn = document.getElementById(`year-filter-sub-${sub.id}`);
+
+                if (btn) {
+                    if (subjectId === sub.id) {
+                        btn.className = `px-2.5 py-1 rounded-full font-semibold border text-white shadow-xs`;
+                        btn.style.backgroundColor = sub.color;
+                        btn.style.borderColor = sub.color;
+                    } else {
+                        btn.className = `px-2.5 py-1 rounded-full font-medium border text-slate-600 border-slate-200 hover:border-slate-300 bg-white`;
+                        btn.style.backgroundColor = '';
+                        btn.style.borderColor = '';
+                    }
+                }
+
+                if (yBtn) {
+                    if (subjectId === sub.id) {
+                        yBtn.className = `px-2.5 py-1 rounded-full font-semibold border text-white shadow-xs`;
+                        yBtn.style.backgroundColor = sub.color;
+                        yBtn.style.borderColor = sub.color;
+                    } else {
+                        yBtn.className = `px-2.5 py-1 rounded-full font-medium border text-slate-600 border-slate-200 hover:border-slate-300 bg-white`;
+                        yBtn.style.backgroundColor = '';
+                        yBtn.style.borderColor = '';
+                    }
+                }
+            });
+
+            renderCalendar();
+            renderYearView();
+        }
+
+        function openCourseInspector(subId, courseNo) {
+            selectedInspectorSubjectId = subId;
+            selectedInspectorCourseNo = courseNo;
+            const sub = SUBJECTS.find(s => s.id === subId);
+
+            const badge = document.getElementById('inspector-subj-badge');
+            if (badge) {
+                badge.textContent = sub ? `${sub.code} (วิชาที่ ${sub.id})` : '';
+                badge.style.backgroundColor = sub ? sub.color : '#4f46e5';
+            }
+            const title = document.getElementById('inspector-title');
+            if (title) {
+                title.textContent = `${sub ? sub.shortName : ''} - คอร์สที่ ${courseNo} (กำหนด ${sub ? sub.daysPerCourse : 0} วัน)`;
+            }
+
+            renderInspectorTable();
+            const modal = document.getElementById('modal-course-inspector');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeCourseInspector() {
+            document.getElementById('modal-course-inspector').classList.add('hidden');
+        }
+
+        function renderInspectorTable() {
+            const tbody = document.getElementById('inspector-table-body');
+            tbody.innerHTML = '';
+
+            const sub = SUBJECTS.find(s => s.id === selectedInspectorSubjectId);
+            const courseSchedules = schedules.filter(s => 
+                s.subjectId === selectedInspectorSubjectId && 
+                s.courseNo === selectedInspectorCourseNo
+            );
+
+            courseSchedules.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            document.getElementById('inspector-sessions-count').textContent = `${courseSchedules.length} วัน (เป้าหมาย: ${sub ? sub.daysPerCourse : ''} วัน)`;
+
+            const rangeEl = document.getElementById('inspector-date-range');
+            const hasShifted = courseSchedules.some(s => s.shiftedFromHoliday);
+
+            if (courseSchedules.length > 0) {
+                const start = courseSchedules[0].date;
+                const end = courseSchedules[courseSchedules.length - 1].date;
+                rangeEl.innerHTML = `
+                    <span>ช่วงวันที่: <strong>${formatThaiDate(start)}</strong> ถึง <strong>${formatThaiDate(end)}</strong></span>
+                    ${hasShifted ? '<span class="ml-2 text-rose-600 bg-rose-50 px-2 py-0.5 rounded text-[10px] font-semibold border border-rose-200">🔄 ยกทั้งคอร์สเริ่มวันที่ 1 หลังวันหยุดยาว</span>' : ''}
+                `;
+            } else {
+                rangeEl.textContent = 'ช่วงวันที่: ยังไม่มีกำหนดการ';
+            }
+
+            if (courseSchedules.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-slate-400">
+                            ยังไม่มีการลงตารางเรียนในคอร์สนี้<br>
+                            <span class="text-[11px] text-slate-500">กดปุ่ม "+ เพิ่มวันอบรมให้คอร์สนี้" เพื่อจัดตาราง</span>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            courseSchedules.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+
+                const isHoliday = holidays.find(h => h.date === item.date);
+                const isShifted = item.shiftedFromHoliday;
+
+                tr.innerHTML = `
+                    <td class="py-2.5 px-3 font-semibold text-slate-700">
+                        วันที่ ${index + 1}/${sub.daysPerCourse}
+                        ${isShifted ? '<span class="block text-[9px] text-amber-600 font-normal">ยกเริ่มวันที่ 1 หลังวันหยุด</span>' : ''}
+                    </td>
+                    <td class="py-2.5 px-3 font-medium text-slate-800">
+                        ${formatThaiDate(item.date)}
+                        ${isHoliday ? `<span class="ml-1 text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-normal">⚠️ ตรงกับวันหยุด (${isHoliday.title})</span>` : ''}
+                    </td>
+                    <td class="py-2.5 px-3 text-slate-600 font-mono">${item.startTime} - ${item.endTime} น.</td>
+                    <td class="py-2.5 px-3 text-slate-700">${item.location}</td>
+                    <td class="py-2.5 px-3 text-center">
+                        <button onclick="deleteScheduleItem('${item.id}')" class="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50" title="ลบวันอบรมนี้">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function deleteScheduleItem(id) {
+            schedules = schedules.filter(s => s.id !== id);
+            saveSchedules();
+            renderCalendar();
+            renderInspectorTable();
+            renderCourseCards();
+            renderExplorerSubjectTabs();
+            showToast('ลบวันอบรมเรียบร้อยแล้ว');
+        }
+
+        function openScheduleModalForSpecificCourse() {
+            closeCourseInspector();
+            openScheduleModal(null, selectedInspectorSubjectId, selectedInspectorCourseNo);
+        }
+
+        function openScheduleModalForQuickCourse(subId, courseNo) {
+            openScheduleModal(null, subId, courseNo);
+        }
+
+        /* -------------------------------------------------------------
+           6. HOLIDAY MANAGEMENT LOGIC
+           ------------------------------------------------------------- */
+        function openHolidayModal() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('holiday-date').value = todayStr;
+            renderHolidayList();
+            document.getElementById('modal-holiday').classList.remove('hidden');
+        }
+
+        function closeHolidayModal() {
+            document.getElementById('modal-holiday').classList.add('hidden');
+        }
+
+        function handleHolidaySubmit(e) {
+            e.preventDefault();
+            const date = document.getElementById('holiday-date').value;
+            const title = document.getElementById('holiday-title').value.trim();
+            const color = document.getElementById('holiday-color').value;
+
+            if (!date || !title) return;
+
+            const existingIndex = holidays.findIndex(h => h.date === date);
+            if (existingIndex >= 0) {
+                holidays[existingIndex].title = title;
+                holidays[existingIndex].color = color;
+            } else {
+                holidays.push({
+                    id: 'h_' + Date.now(),
+                    date: date,
+                    title: title,
+                    color: color
+                });
+            }
+
+            holidays.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            saveHolidays();
+            renderHolidayList();
+            renderCalendar();
+            document.getElementById('holiday-title').value = '';
+            showToast(`บันทึกวันหยุด "${title}" เรียบร้อย 🏖️`);
+        }
+
+        function deleteHoliday(id) {
+            holidays = holidays.filter(h => h.id !== id);
+            saveHolidays();
+            renderHolidayList();
+            renderCalendar();
+            showToast('ลบวันหยุดเรียบร้อย');
+        }
+
+        function renderHolidayList() {
+            const listEl = document.getElementById('holiday-items-list');
+            const badgeEl = document.getElementById('holiday-count-badge');
+            if (!listEl) return;
+            if (badgeEl) badgeEl.textContent = `${holidays.length} วัน`;
+            listEl.innerHTML = '';
+
+            if (holidays.length === 0) {
+                listEl.innerHTML = '<div class="text-xs text-slate-400 text-center py-4">ยังไม่มีการกำหนดวันหยุด</div>';
+                return;
+            }
+
+            holidays.forEach(h => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs';
+                item.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-3.5 h-3.5 rounded-full shrink-0 shadow-2xs" style="background-color: ${h.color}"></span>
+                        <div>
+                            <span class="font-bold text-slate-800">${formatThaiDate(h.date)}</span>: 
+                            <span class="text-slate-600">${h.title}</span>
+                        </div>
+                    </div>
+                    <button onclick="deleteHoliday('${h.id}')" class="text-slate-400 hover:text-rose-600 p-1 rounded transition" title="ลบวันหยุดนี้">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        /* -------------------------------------------------------------
+           7. MANUAL SCHEDULE SUBMISSION
+           ------------------------------------------------------------- */
+        let currentScheduleMode = 'single';
+
+        function toggleScheduleMode(mode) {
+            currentScheduleMode = mode;
+            if (mode === 'single') {
+                document.getElementById('mode-single-box').classList.remove('hidden');
+                document.getElementById('mode-batch-box').classList.add('hidden');
+                document.getElementById('modal-date-single').required = true;
+                document.getElementById('modal-batch-start').required = false;
+                document.getElementById('modal-batch-end').required = false;
+            } else {
+                document.getElementById('mode-single-box').classList.add('hidden');
+                document.getElementById('mode-batch-box').classList.remove('hidden');
+                document.getElementById('modal-date-single').required = false;
+                document.getElementById('modal-batch-start').required = true;
+                document.getElementById('modal-batch-end').required = true;
+
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('modal-batch-start').value = today;
+                
+                const end = new Date();
+                end.setDate(end.getDate() + 30);
+                document.getElementById('modal-batch-end').value = end.toISOString().split('T')[0];
+            }
+        }
+
+        function populateScheduleFormDropdowns(selectedSubId = 1, selectedCourse = 1) {
+            const subSelect = document.getElementById('modal-subject-select');
+            subSelect.innerHTML = '';
+
+            SUBJECTS.forEach(sub => {
+                const opt = document.createElement('option');
+                opt.value = sub.id;
+                opt.textContent = `${sub.id}. ${sub.code} (${sub.daysPerCourse} วัน/คอร์ส)`;
+                if (sub.id === selectedSubId) opt.selected = true;
+                subSelect.appendChild(opt);
+            });
+
+            onModalSubjectChange(selectedCourse);
+        }
+
+        function onModalSubjectChange(selectedCourse = 1) {
+            const subId = parseInt(document.getElementById('modal-subject-select').value);
+            const sub = SUBJECTS.find(s => s.id === subId);
+            const courseSelect = document.getElementById('modal-course-select');
+            courseSelect.innerHTML = '';
+
+            for (let i = 1; i <= 19; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `คอร์สที่ ${String(i).padStart(2, '0')}/19 (กำหนด ${sub ? sub.daysPerCourse : ''} วัน)`;
+                if (i === selectedCourse) opt.selected = true;
+                courseSelect.appendChild(opt);
+            }
+
+            if (sub) {
+                document.getElementById('modal-location').value = sub.location;
+            }
+        }
+
+        function openScheduleModal(presetDate = null, presetSubId = null, presetCourseNo = null) {
+            const subId = presetSubId || currentExplorerSubjectId || 1;
+            const courseNo = presetCourseNo || 1;
+            populateScheduleFormDropdowns(subId, courseNo);
+
+            const todayStr = presetDate || new Date().toISOString().split('T')[0];
+            document.getElementById('modal-date-single').value = todayStr;
+
+            document.querySelector('input[name="schedule-mode"][value="single"]').checked = true;
+            toggleScheduleMode('single');
+
+            document.getElementById('modal-schedule').classList.remove('hidden');
+        }
+
+        function closeScheduleModal() {
+            document.getElementById('modal-schedule').classList.add('hidden');
+        }
+
+        function handleScheduleSubmit(e) {
+            e.preventDefault();
+
+            const subjectId = parseInt(document.getElementById('modal-subject-select').value);
+            const courseNo = parseInt(document.getElementById('modal-course-select').value);
+            const roundName = document.getElementById('modal-round-name').value.trim();
+            const location = document.getElementById('modal-location').value.trim();
+            const startTime = document.getElementById('modal-time-start').value;
+            const endTime = document.getElementById('modal-time-end').value;
+
+            if (currentScheduleMode === 'single') {
+                const date = document.getElementById('modal-date-single').value;
+                if (!date) return;
+
+                schedules.push({
+                    id: 'sc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                    subjectId,
+                    courseNo,
+                    roundName,
+                    location,
+                    date,
+                    startTime,
+                    endTime
+                });
+
+                showToast(`บันทึกตารางเรียนวันที่ ${formatThaiDate(date)} สำเร็จ!`);
+            } else {
+                const startStr = document.getElementById('modal-batch-start').value;
+                const endStr = document.getElementById('modal-batch-end').value;
+                
+                const dayCheckboxes = document.querySelectorAll('input[name="batch-days"]:checked');
+                const allowedDays = Array.from(dayCheckboxes).map(cb => parseInt(cb.value));
+
+                if (!startStr || !endStr || allowedDays.length === 0) {
+                    showToast('⚠️ กรุณาระบุช่วงวันที่และเลือกวันเรียนอย่างน้อย 1 วัน');
+                    return;
+                }
+
+                const startDate = new Date(startStr);
+                const endDate = new Date(endStr);
+
+                if (startDate > endDate) {
+                    showToast('⚠️ วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด');
+                    return;
+                }
+
+                let addedCount = 0;
+                let skippedHolidayCount = 0;
+
+                const cur = new Date(startDate);
+                while (cur <= endDate) {
+                    const y = cur.getFullYear();
+                    const m = String(cur.getMonth() + 1).padStart(2, '0');
+                    const d = String(cur.getDate()).padStart(2, '0');
+                    const curDateStr = `${y}-${m}-${d}`;
+                    const dayOfWeek = cur.getDay();
+
+                    if (allowedDays.includes(dayOfWeek)) {
+                        const isHoliday = holidays.some(h => h.date === curDateStr);
+                        if (!isHoliday) {
+                            schedules.push({
+                                id: 'sc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                                subjectId,
+                                courseNo,
+                                roundName,
+                                location,
+                                date: curDateStr,
+                                startTime,
+                                endTime
+                            });
+                            addedCount++;
+                        } else {
+                            skippedHolidayCount++;
+                        }
+                    }
+
+                    cur.setDate(cur.getDate() + 1);
+                }
+
+                let msg = `ลงรอบเรียนสำเร็จทั้งหมด ${addedCount} วัน`;
+                if (skippedHolidayCount > 0) {
+                    msg += ` (ข้ามวันหยุดไป ${skippedHolidayCount} วัน)`;
+                }
+                showToast(msg);
+            }
+
+            saveSchedules();
+            closeScheduleModal();
+            renderCalendar();
+            renderExplorerSubjectTabs();
+            renderCourseCards();
+        }
+
+        /* -------------------------------------------------------------
+           8. HELPERS & DAY OVERVIEW
+           ------------------------------------------------------------- */
+        function switchView(viewName) {
+            const calView = document.getElementById('calendar-view');
+            const yearView = document.getElementById('year-view');
+            const expView = document.getElementById('explorer-view');
+            const btnCal = document.getElementById('tab-btn-calendar');
+            const btnYear = document.getElementById('tab-btn-year');
+            const btnExp = document.getElementById('tab-btn-explorer');
+
+            // Reset all buttons
+            [btnCal, btnYear, btnExp].forEach(b => {
+                if (b) b.className = 'px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center gap-2 font-medium';
+            });
+
+            if (viewName === 'calendar') {
+                calView.classList.remove('hidden');
+                if (yearView) yearView.classList.add('hidden');
+                expView.classList.add('hidden');
+
+                btnCal.className = 'px-4 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition-all flex items-center gap-2 font-medium';
+                renderCalendar();
+            } else if (viewName === 'year') {
+                calView.classList.add('hidden');
+                if (yearView) yearView.classList.remove('hidden');
+                expView.classList.add('hidden');
+
+                btnYear.className = 'px-4 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition-all flex items-center gap-2 font-medium';
+                renderYearView();
+            } else {
+                calView.classList.add('hidden');
+                if (yearView) yearView.classList.add('hidden');
+                expView.classList.remove('hidden');
+
+                btnExp.className = 'px-4 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition-all flex items-center gap-2 font-medium';
+                renderExplorerSubjectTabs();
+            }
+        }
+
+        function formatThaiDate(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const y = parseInt(parts[0]);
+            const m = parseInt(parts[1]) - 1;
+            const d = parseInt(parts[2]);
+            return `${d} ${THAI_MONTHS[m]} ${y + 543}`;
+        }
+
+        function showToast(message, icon = '✅') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            document.getElementById('toast-icon').textContent = icon;
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+
+        function openDayOverview(dateString, daySchedules, holiday) {
+            if (daySchedules.length > 0) {
+                // Focus the first course in inspector
+                openCourseInspector(daySchedules[0].subjectId, daySchedules[0].courseNo);
+            }
+        }
+
+        /* -------------------------------------------------------------
+           9. APP MOUNT
+           ------------------------------------------------------------- */
+        window.addEventListener('DOMContentLoaded', () => {
+            initializeData();
+            renderSubjectFilters();
+            renderCalendar();
+            renderYearView();
+            renderExplorerSubjectTabs();
+        });
+    </script>
+
+    <!-- Cloud Storage Firebase Module -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Environment variables provided by runtime
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'edu-tech7-schedule-app';
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let isSyncingToCloud = false;
+
+        const updateCloudBadge = (status, text) => {
+            const badge = document.getElementById('cloud-status-badge');
+            const dot = document.getElementById('cloud-status-dot');
+            const textEl = document.getElementById('cloud-status-text');
+            if (!badge || !dot || !textEl) return;
+            badge.classList.remove('hidden');
+
+            if (status === 'connected') {
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+                textEl.textContent = text || 'บันทึกออนไลน์อัตโนมัติ (Online)';
+                textEl.className = 'text-emerald-700 font-semibold';
+            } else if (status === 'syncing') {
+                dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+                textEl.textContent = text || 'กำลังบันทึกลงระบบคลาวด์...';
+                textEl.className = 'text-amber-700';
+            } else if (status === 'error') {
+                dot.className = 'w-2 h-2 rounded-full bg-rose-500';
+                textEl.textContent = text || 'ออฟไลน์ (ใช้งานหน่วยความจำในเครื่อง)';
+                textEl.className = 'text-rose-700';
+            }
+        };
+
+        async function initCloudSync() {
+            try {
+                if (typeof __firebase_config === 'undefined') {
+                    updateCloudBadge('connected', 'บันทึกในเครื่องอัตโนมัติ (LocalStorage)');
+                    return;
+                }
+
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Authenticate
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                currentUser = auth.currentUser;
+                if (!currentUser) return;
+
+                updateCloudBadge('connected', 'บันทึกออนไลน์อัตโนมัติ (Online)');
+
+                // Public document path according to strict rule: /artifacts/{appId}/public/data/state/schedule_data
+                const dataDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedule_state');
+
+                // Real-time synchronization listener
+                onSnapshot(dataDocRef, (docSnap) => {
+                    if (isSyncingToCloud) return; // Ignore echoes from self save
+
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if (data && data.schedules && Array.isArray(data.schedules)) {
+                            window.schedules = data.schedules;
+                            try { localStorage.setItem(STORAGE_KEY_SCHEDULES, JSON.stringify(window.schedules)); } catch(e){}
+                        }
+                        if (data && data.holidays && Array.isArray(data.holidays)) {
+                            window.holidays = data.holidays;
+                            try { localStorage.setItem(STORAGE_KEY_HOLIDAYS, JSON.stringify(window.holidays)); } catch(e){}
+                        }
+                        renderCalendar();
+                        renderYearView();
+                        renderExplorerSubjectTabs();
+                        renderCourseCards();
+                    }
+                }, (error) => {
+                    console.warn("Firestore onSnapshot error:", error);
+                    updateCloudBadge('error', 'ออฟไลน์ (ใช้งานข้อมูลเครื่อง)');
+                });
+
+                // Hook up the global save triggers
+                window.syncToCloudStorage = async function() {
+                    if (!db || !currentUser) return;
+                    try {
+                        isSyncingToCloud = true;
+                        updateCloudBadge('syncing', 'กำลังบันทึกลงคลาวด์...');
+
+                        await setDoc(dataDocRef, {
+                            schedules: window.schedules || [],
+                            holidays: window.holidays || [],
+                            updatedAt: new Date().toISOString(),
+                            updatedBy: currentUser.uid
+                        }, { merge: true });
+
+                        setTimeout(() => {
+                            isSyncingToCloud = false;
+                            updateCloudBadge('connected', 'บันทึกออนไลน์เรียบร้อย');
+                        }, 500);
+                    } catch (err) {
+                        console.error("Cloud save failed:", err);
+                        isSyncingToCloud = false;
+                        updateCloudBadge('error', 'บันทึกออนไลน์ผิดพลาด');
+                    }
+                };
+
+            } catch (err) {
+                console.warn("Cloud storage init error:", err);
+                updateCloudBadge('connected', 'บันทึกในเครื่องอัตโนมัติ');
+            }
+        }
+
+        // Initialize cloud storage after page loads
+        initCloudSync();
+    </script>
+
+    <!-- Cloud save hooks & Excel export functions -->
+    <script>
+        // Override saveSchedules & saveHolidays to also push to cloud storage if online
+        const originalSaveSchedules = saveSchedules;
+        saveSchedules = function() {
+            originalSaveSchedules();
+            if (typeof window.syncToCloudStorage === 'function') {
+                window.syncToCloudStorage();
+            }
+        };
+
+        const originalSaveHolidays = saveHolidays;
+        saveHolidays = function() {
+            originalSaveHolidays();
+            if (typeof window.syncToCloudStorage === 'function') {
+                window.syncToCloudStorage();
+            }
+        };
+
+        /* -------------------------------------------------------------
+           EXCEL EXPORT ENGINE (SheetJS .xlsx)
+           Outputs 3 rich sheets:
+           1. สรุปภาพรวม 19 คอร์ส (7 วิชา)
+           2. ปฏิทินตารางอบรมรายวันทั้งหมด (All Scheduled Days)
+           3. รายการวันหยุดราชการและวันหยุดพิเศษ (Holidays)
+           ------------------------------------------------------------- */
+        function exportScheduleToExcel() {
+            if (typeof XLSX === 'undefined') {
+                showToast('❌ ไม่พบไลบรารีส่งออก Excel กรุณาลองใหม่อีกครั้ง');
+                return;
+            }
+
+            try {
+                const wb = XLSX.utils.book_new();
+
+                // ---------------- Sheet 1: Course Summary (19 Courses per Subject) ----------------
+                const summaryData = [
+                    ["รายงานสรุปตารางฝึกอบรม 7 สาขาวิชาช่างและเทคโนโลยี (19 คอร์ส)"],
+                    ["ระบบบริหารจัดการตารางสอนและวันหยุด (เริ่มต้น พฤศจิกายน 2569)"],
+                    ["วันที่ส่งออกข้อมูล:", formatThaiDate(new Date().toISOString().split('T')[0])],
+                    [],
+                    ["ลำดับวิชา", "รหัสวิชา", "ชื่อวิชา", "คอร์สที่", "จำนวนวันตามเกณฑ์", "จำนวนวันที่จัดแล้ว", "วันที่เริ่มอบรม", "วันที่สิ้นสุดอบรม", "ช่วงเวลา", "สถานที่อบรม", "สถานะการจัดตาราง", "หมายเหตุการเลื่อนหลังวันหยุด"]
+                ];
+
+                SUBJECTS.forEach(sub => {
+                    for (let c = 1; c <= 19; c++) {
+                        const courseScheds = schedules.filter(s => s.subjectId === sub.id && s.courseNo === c);
+                        courseScheds.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                        const isScheduled = courseScheds.length > 0;
+                        const startDate = isScheduled ? formatThaiDate(courseScheds[0].date) : "-";
+                        const endDate = isScheduled ? formatThaiDate(courseScheds[courseScheds.length - 1].date) : "-";
+                        const timeStr = isScheduled ? `${courseScheds[0].startTime} - ${courseScheds[0].endTime} น.` : "-";
+                        const loc = isScheduled ? courseScheds[0].location : sub.location;
+                        const status = !isScheduled 
+                            ? "ยังไม่จัดตาราง" 
+                            : (courseScheds.length >= sub.daysPerCourse ? "จัดครบกำหนด" : `ยังไม่ครบ (${courseScheds.length}/${sub.daysPerCourse})`);
+                        
+                        const hasShift = courseScheds.some(s => s.shiftedFromHoliday);
+                        const note = hasShift ? "ยกทั้งคอร์ส (วันที่ 1) ไปจัดต่อหลังวันหยุดยาว" : "-";
+
+                        summaryData.push([
+                            sub.id,
+                            sub.code,
+                            sub.name,
+                            `คอร์สที่ ${c}`,
+                            `${sub.daysPerCourse} วัน`,
+                            `${courseScheds.length} วัน`,
+                            startDate,
+                            endDate,
+                            timeStr,
+                            loc,
+                            status,
+                            note
+                        ]);
+                    }
+                });
+
+                const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+                wsSummary['!cols'] = [
+                    { wch: 10 }, { wch: 12 }, { wch: 38 }, { wch: 12 }, { wch: 16 }, 
+                    { wch: 16 }, { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 30 }, 
+                    { wch: 18 }, { wch: 32 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsSummary, "สรุปภาพรวม 19 คอร์ส");
+
+                // ---------------- Sheet 2: Daily Scheduled Sessions ----------------
+                const dailyData = [
+                    ["ตารางการฝึกอบรมรายวันทั้งหมด (All Daily Sessions)"],
+                    ["จัดเรียงตามวันที่"],
+                    [],
+                    ["ลำดับ", "วันที่ (YYYY-MM-DD)", "วันที่ (ภาษาไทย)", "วันในสัปดาห์", "รหัสวิชา", "ชื่อวิชา", "คอร์สที่", "วันที่ของคอร์ส", "รอบการอบรม", "เวลาเริ่ม", "เวลาสิ้นสุด", "สถานที่", "หมายเหตุ"]
+                ];
+
+                const sortedSchedules = [...schedules].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const thaiDayNames = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
+                sortedSchedules.forEach((item, idx) => {
+                    const sub = SUBJECTS.find(s => s.id === item.subjectId);
+                    const dObj = new Date(item.date);
+                    const dayName = thaiDayNames[dObj.getDay()];
+
+                    dailyData.push([
+                        idx + 1,
+                        item.date,
+                        formatThaiDate(item.date),
+                        dayName,
+                        sub ? sub.code : "-",
+                        sub ? sub.name : "-",
+                        `คอร์สที่ ${item.courseNo}`,
+                        `วันที่ ${item.dayIndexInCourse || 1}/${sub ? sub.daysPerCourse : ''}`,
+                        item.roundName || "-",
+                        item.startTime || "09:00",
+                        item.endTime || "16:00",
+                        item.location || "-",
+                        item.shiftedFromHoliday ? "ยกทั้งคอร์สจัดหลังวันหยุดยาว" : "-"
+                    ]);
+                });
+
+                const wsDaily = XLSX.utils.aoa_to_sheet(dailyData);
+                wsDaily['!cols'] = [
+                    { wch: 8 }, { wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 12 }, 
+                    { wch: 36 }, { wch: 14 }, { wch: 16 }, { wch: 28 }, { wch: 12 }, 
+                    { wch: 12 }, { wch: 28 }, { wch: 26 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsDaily, "ตารางสอนรายวัน");
+
+                // ---------------- Sheet 3: Holiday Registry ----------------
+                const holidayData = [
+                    ["รายชื่อวันหยุดราชการและวันหยุดพิเศษที่ระบบข้ามอัตโนมัติ"],
+                    [],
+                    ["ลำดับ", "วันที่ (YYYY-MM-DD)", "วันที่ (ภาษาไทย)", "ชื่อวันหยุด / เทศกาล", "โค้ดสีไฮไลต์"]
+                ];
+
+                const sortedHolidays = [...holidays].sort((a, b) => new Date(a.date) - new Date(b.date));
+                sortedHolidays.forEach((h, idx) => {
+                    holidayData.push([
+                        idx + 1,
+                        h.date,
+                        formatThaiDate(h.date),
+                        h.title,
+                        h.color
+                    ]);
+                });
+
+                const wsHoliday = XLSX.utils.aoa_to_sheet(holidayData);
+                wsHoliday['!cols'] = [
+                    { wch: 8 }, { wch: 15 }, { wch: 25 }, { wch: 40 }, { wch: 15 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsHoliday, "รายการวันหยุด");
+
+                // Generate and trigger download
+                const fileName = `ตารางฝึกอบรม_7วิชา_19คอร์ส_${new Date().toISOString().split('T')[0]}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+                showToast(`ส่งออกไฟล์ Excel "${fileName}" สำเร็จแล้ว! 📊`);
+            } catch (err) {
+                console.error("Export error:", err);
+                showToast('❌ เกิดข้อผิดพลาดในการส่งออกไฟล์ Excel');
+            }
+        }
+    </script>
+</body>
+</html>
